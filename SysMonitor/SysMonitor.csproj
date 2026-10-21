@@ -1,0 +1,47 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- 只为托盘图标（NotifyIcon）引用 WinForms -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>SysMonitor</AssemblyName>
+    <RootNamespace>SysMonitor</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 图标由 ../tools/make_icon.py 生成 -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <Version>2.0.0</Version>
+    <Product>SysMonitor</Product>
+    <AssemblyTitle>SysMonitor 系统监控</AssemblyTitle>
+    <!-- Application.ThemeMode（Fluent 主题）在 .NET 9/10 仍标记为实验性 API -->
+    <!-- WFO0003：WinForms 分析器要求 DPI 设置不放在 manifest，但这是 WPF 程序，DPI 应在 manifest 声明 -->
+    <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms 的全局 using 会和 WPF 同名类型（Application、MessageBox 等）冲突，去掉 -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <!-- WPF 默认不带 System.IO（避开 Shapes.Path 重名），本项目没用 Shapes，加回来 -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 采集层（与界面无关）：传感器、WMI 硬件信息、报告，放在 ../Core -->
+    <Compile Include="..\Core\*.cs" Link="Core\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="System.Management" Version="10.0.13" />
+  </ItemGroup>
+
+</Project>

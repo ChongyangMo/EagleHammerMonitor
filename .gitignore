@@ -1,0 +1,6 @@
+bin/
+obj/
+.vs/
+*.user
+tools/icon_preview.png
+__pycache__/
