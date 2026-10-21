@@ -48,21 +48,25 @@ public partial class MainWindow : Window
     string? _currentTag;
     bool _bannerNeeded;
     bool _closed;
+    bool _exiting, _tipShown;
 
     public MainWindow()
     {
         InitializeComponent();
         GraphList.ItemsSource = _graphs;
         SensorList.ItemsSource = _sensorItems;
-        _tray = new TrayIcon(RestoreFromTray, Close);
+        _tray = new TrayIcon(RestoreFromTray, ExitApp);
         // 任务栏数据的回调在它自己的线程上触发，切回界面线程
         _taskbar = new TaskbarPanel(
             () => Dispatcher.BeginInvoke(RestoreFromTray),
-            () => Dispatcher.BeginInvoke(Close),
+            () => Dispatcher.BeginInvoke(ExitApp),
             side => Dispatcher.BeginInvoke(() => SetTaskbar(side)));
 
         _sensors.IntervalMs = _settings.IntervalMs;
         TrayItem.IsChecked = _settings.MinimizeToTray;
+        CloseTrayItem.IsChecked = _settings.CloseToTray;
+        // 关机、注销时不能拦着不关
+        Application.Current.SessionEnding += (_, _) => _exiting = true;
         TaskbarMenu.IsEnabled = TaskbarPanel.Supported;
         SetTaskbar(_settings.TaskbarDisplay ? _settings.TaskbarSide : null);
         SyncMenuChecks();
@@ -92,6 +96,29 @@ public partial class MainWindow : Window
                 return found;
         }
         return null;
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // 点 × 只隐藏到托盘，传感器和任务栏数据照常运行；真正退出走托盘菜单或“文件 → 退出”
+        if (!_exiting && _settings.CloseToTray)
+        {
+            e.Cancel = true;
+            Hide();
+            if (!_tipShown)
+            {
+                _tipShown = true;
+                _tray.ShowTip("SysMonitor 仍在运行", "已退出到托盘。双击托盘图标重新打开，右键托盘图标 → 退出 可彻底关闭。");
+            }
+            return;
+        }
+        base.OnClosing(e);
+    }
+
+    void ExitApp()
+    {
+        _exiting = true;
+        Close();
     }
 
     protected override void OnClosed(EventArgs e)
@@ -483,6 +510,12 @@ public partial class MainWindow : Window
 
     void ResetMinMax_Click(object sender, RoutedEventArgs e) => _sensors.ResetMinMax();
 
+    void CloseTray_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.CloseToTray = CloseTrayItem.IsChecked;
+        _settings.Save();
+    }
+
     void Tray_Click(object sender, RoutedEventArgs e)
     {
         _settings.MinimizeToTray = TrayItem.IsChecked;
@@ -509,7 +542,7 @@ public partial class MainWindow : Window
 
     void RefreshInfo_Click(object sender, RoutedEventArgs e) => LoadInfo();
 
-    void Exit_Click(object sender, RoutedEventArgs e) => Close();
+    void Exit_Click(object sender, RoutedEventArgs e) => ExitApp();
 
     void About_Click(object sender, RoutedEventArgs e) => MessageBox.Show(this,
         "SysMonitor 系统监控 2.0（WPF）\n\n" +

@@ -31,6 +31,8 @@ sealed class TrayIcon : IDisposable
         catch { return SystemIcons.Application; }
     }
 
+    public void ShowTip(string title, string text) => _icon.ShowBalloonTip(3000, title, text, Forms.ToolTipIcon.Info);
+
     public void Update(SensorSnapshot s, List<string> stats)
     {
         float? temp = SensorPicks.CpuTemp(s)?.Value;

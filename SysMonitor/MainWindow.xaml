@@ -94,6 +94,7 @@
                 <MenuItem Header="重置最小/最大值" Click="ResetMinMax_Click" />
                 <Separator />
                 <MenuItem x:Name="TrayItem" Header="最小化到托盘" IsCheckable="True" Click="Tray_Click" />
+                <MenuItem x:Name="CloseTrayItem" Header="关闭时退出到托盘" IsCheckable="True" Click="CloseTray_Click" />
                 <MenuItem x:Name="TaskbarMenu" Header="任务栏数据">
                     <MenuItem Header="不显示" Tag="Off" Click="Taskbar_Click" />
                     <MenuItem Header="显示在左侧" Tag="Left" Click="Taskbar_Click" />

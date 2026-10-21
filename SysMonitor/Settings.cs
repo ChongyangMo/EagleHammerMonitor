@@ -19,6 +19,9 @@ public sealed class AppSettings
 
     public bool MinimizeToTray { get; set; } = true;
 
+    /// <summary>点窗口的 × 时隐藏到托盘而不是退出。</summary>
+    public bool CloseToTray { get; set; } = true;
+
     /// <summary>在任务栏空白处显示 CPU / 内存 / GPU / 网速（仅 Win11）。</summary>
     public bool TaskbarDisplay { get; set; } = true;
 

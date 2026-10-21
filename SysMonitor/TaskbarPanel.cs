@@ -487,7 +487,8 @@ sealed class TaskbarPanel : IDisposable
                         Caption = "SysMonitor",
                         Parent = l.Taskbar,
                         Style = Native.WS_CHILD | Native.WS_CLIPSIBLINGS,
-                        ExStyle = Native.WS_EX_LAYERED | Native.WS_EX_NOACTIVATE,
+                        // NOPARENTNOTIFY：不然按下左键时任务栏收到通知会抢走鼠标，松开的消息到不了这里
+                        ExStyle = Native.WS_EX_LAYERED | Native.WS_EX_NOACTIVATE | Native.WS_EX_NOPARENTNOTIFY,
                     });
                 }
                 catch (System.ComponentModel.Win32Exception)
@@ -563,9 +564,18 @@ sealed class TaskbarPanel : IDisposable
                     _hover = false;
                     Render();
                     break;
-                case Native.WM_LBUTTONUP:
-                    owner.OnClick();
+                case Native.WM_LBUTTONDOWN:
+                    Native.SetCapture(Handle); // 按下后捕获鼠标，保证松开的消息回到这里
                     return;
+                case Native.WM_LBUTTONUP:
+                {
+                    Native.ReleaseCapture();
+                    // 按下后拖到外面再松开不算点击
+                    int cx = (short)m.LParam, cy = (short)(m.LParam >> 16);
+                    if (Native.GetClientRect(Handle, out var rc) && cx >= 0 && cy >= 0 && cx < rc.Right && cy < rc.Bottom)
+                        owner.OnClick();
+                    return;
+                }
                 case Native.WM_RBUTTONUP:
                     owner.OnMenu();
                     return;
@@ -577,8 +587,8 @@ sealed class TaskbarPanel : IDisposable
     static class Native
     {
         public const int WS_CHILD = 0x40000000, WS_CLIPSIBLINGS = 0x04000000;
-        public const int WS_EX_LAYERED = 0x80000, WS_EX_NOACTIVATE = 0x08000000;
-        public const int WM_MOUSEACTIVATE = 0x21, WM_MOUSEMOVE = 0x200, WM_LBUTTONUP = 0x202, WM_RBUTTONUP = 0x205, WM_MOUSELEAVE = 0x2A3;
+        public const int WS_EX_LAYERED = 0x80000, WS_EX_NOACTIVATE = 0x08000000, WS_EX_NOPARENTNOTIFY = 0x4;
+        public const int WM_MOUSEACTIVATE = 0x21, WM_MOUSEMOVE = 0x200, WM_LBUTTONDOWN = 0x201, WM_LBUTTONUP = 0x202, WM_RBUTTONUP = 0x205, WM_MOUSELEAVE = 0x2A3;
         public const int MA_NOACTIVATE = 3;
         public const uint SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40;
         public static readonly IntPtr HWND_TOP = 0;
@@ -607,6 +617,9 @@ sealed class TaskbarPanel : IDisposable
         [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
         [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
         [DllImport("user32.dll")] public static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT e);
+        [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hwnd);
+        [DllImport("user32.dll")] public static extern bool ReleaseCapture();
+        [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr hwnd, out RECT rect);
         [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hwnd);
         [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
         [DllImport("user32.dll")]
