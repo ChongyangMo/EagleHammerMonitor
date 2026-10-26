@@ -9,11 +9,17 @@ using Forms = System.Windows.Forms;
 
 namespace SysMonitor;
 
-/// <summary>任务栏上的一行：标签 + 若干数值格。</summary>
-sealed record BarRow(string Label, BarCell[] Cells);
+/// <summary>标签的颜色：普通标签用淡色，上传/下载箭头各用一种颜色，一眼分得出方向。</summary>
+enum LabelTone { Normal, Up, Down }
 
-/// <summary>一个数值格。Template 是它最宽时的样子，用来固定列宽，数字变化时不跳动；Level 1 偏热、2 过热。</summary>
-readonly record struct BarCell(string Text, string Template, int Level = 0);
+/// <summary>任务栏上的一行：标签 + 若干数值格。</summary>
+sealed record BarRow(string Label, BarCell[] Cells, LabelTone Tone = LabelTone.Normal);
+
+/// <summary>
+/// 一个数值格：粗体数字 + 淡色单位。Template/UnitTemplate 是数字和单位最宽时的样子，用来固定列宽，数字变化时不跳动；
+/// Level 1 偏高（橙）、2 过高（红）；Fill（0~1）不为空时在数字前画一根占用率小条。
+/// </summary>
+readonly record struct BarCell(string Value, string Unit, string Template, string UnitTemplate, int Level = 0, float? Fill = null);
 
 /// <summary>
 /// 在 Win11 任务栏的空白处显示数据，三块（CPU+内存、GPU+显存、上传+下载）并排放在用户选的一侧：
@@ -138,24 +144,33 @@ sealed class TaskbarPanel : IDisposable
         AddRow(gpu, "显存", Percent(SensorPicks.GpuMemLoad(s)));
         if (SensorPicks.NetRates(s) is (float up, float down))
         {
-            AddRow(net, "↑", Rate(up));
-            AddRow(net, "↓", Rate(down));
+            AddRow(net, "↑", LabelTone.Up, Rate(up));
+            AddRow(net, "↓", LabelTone.Down, Rate(down));
         }
         return [cpu, gpu, net];
     }
 
-    static BarCell? Percent(SensorReading? r) => r?.Value is float v ? new BarCell($"{v:0}%", "100%") : null;
+    static BarCell? Percent(SensorReading? r) =>
+        r?.Value is float v ? new BarCell($"{v:0}", "%", "100", "%", v >= 90 ? 2 : v >= 75 ? 1 : 0, Math.Clamp(v / 100, 0, 1)) : null;
 
     static BarCell? Temp(SensorReading? r) =>
-        r?.Value is float v ? new BarCell($"{v:0}°C", "100°C", v >= 85 ? 2 : v >= 70 ? 1 : 0) : null;
+        r?.Value is float v ? new BarCell($"{v:0}", "°C", "100", "°C", v >= 85 ? 2 : v >= 70 ? 1 : 0) : null;
 
-    static BarCell Rate(float v) => new(SensorFormat.Rate(v), "999.9 KB/s");
+    /// <summary>“3.1 KB/s” 拆成数字和单位两部分。</summary>
+    static BarCell Rate(float v)
+    {
+        var s = SensorFormat.Rate(v);
+        int i = s.LastIndexOf(' ');
+        return new BarCell(s[..i], s[(i + 1)..], "999.9", "MB/s");
+    }
 
-    static void AddRow(List<BarRow> rows, string label, params BarCell?[] cells)
+    static void AddRow(List<BarRow> rows, string label, params BarCell?[] cells) => AddRow(rows, label, LabelTone.Normal, cells);
+
+    static void AddRow(List<BarRow> rows, string label, LabelTone tone, params BarCell?[] cells)
     {
         var present = cells.Where(c => c.HasValue).Select(c => c!.Value).ToArray();
         if (present.Length > 0)
-            rows.Add(new BarRow(label, present));
+            rows.Add(new BarRow(label, present, tone));
     }
 
     // ───────────────────────────── 布局（计时器线程） ─────────────────────────────
