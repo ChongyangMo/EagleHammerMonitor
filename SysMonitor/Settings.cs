@@ -9,32 +9,78 @@ public enum ThemeChoice { System, Light, Dark }
 /// <summary>任务栏数据放在居中图标组的哪一侧。</summary>
 public enum TaskbarSide { Left, Right }
 
-/// <summary>任务栏上显示哪些项目（默认全部显示）。</summary>
-public sealed record TaskbarItems
+/// <summary>任务栏上的一行（每种只有一行），显示什么见 TaskbarCatalog。</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<TaskbarRowKind>))]
+public enum TaskbarRowKind { Cpu, Mem, Gpu, Vram, Up, Down, Disk, Fan }
+
+/// <summary>行里可以显示的一项数据。</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<TaskbarMetric>))]
+public enum TaskbarMetric
 {
-    public bool CpuLoad { get; init; } = true;
-    public bool CpuTemp { get; init; } = true;
-    public bool MemLoad { get; init; } = true;
-    public bool GpuLoad { get; init; } = true;
-    public bool GpuTemp { get; init; } = true;
-    public bool GpuMemLoad { get; init; } = true;
-    public bool NetUp { get; init; } = true;
-    public bool NetDown { get; init; } = true;
-
-    /// <summary>占用率数字前的小条。</summary>
-    public bool Meters { get; init; } = true;
-
-    /// <summary>三块从左到右的顺序（编辑窗口里拖动调整）。</summary>
-    public TaskbarBlock[]? Order { get; init; }
-
-    /// <summary>整理过的顺序：去掉重复和无效的，漏掉的块按默认顺序补在后面。</summary>
-    public TaskbarBlock[] BlockOrder() =>
-        [.. (Order ?? []).Where(b => Enum.IsDefined(b)).Concat(Enum.GetValues<TaskbarBlock>()).Distinct()];
+    CpuLoad, CpuTemp, CpuClock, CpuPower,
+    MemLoad, MemUsed,
+    GpuLoad, GpuTemp, GpuClock, GpuPower, GpuFan,
+    VramLoad, VramUsed,
+    NetUp, NetDown,
+    DiskActivity, DiskTemp, DiskRead, DiskWrite,
 }
 
-/// <summary>任务栏上的三块。</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<TaskbarBlock>))]
-public enum TaskbarBlock { Cpu, Gpu, Net }
+/// <summary>一行的设置：显示哪几项数据；风扇行另外记着显示哪几个风扇（传感器 Id）。</summary>
+public sealed class TaskbarRow
+{
+    public TaskbarRowKind Kind { get; set; }
+    public List<TaskbarMetric> Metrics { get; set; } = [];
+    public List<string> Fans { get; set; } = [];
+}
+
+/// <summary>
+/// 任务栏布局：若干列从左到右排，每列最多两行（任务栏只有两行高）。
+/// 不显示的行放在 Hidden 里，记着各自的选项，重新拖回来时恢复。
+/// </summary>
+public sealed class TaskbarLayout
+{
+    public const int MaxRows = 2;
+
+    public List<List<TaskbarRow>> Columns { get; set; } = [];
+    public List<TaskbarRow> Hidden { get; set; } = [];
+
+    /// <summary>占用率数字前的小条。</summary>
+    public bool Meters { get; set; } = true;
+
+    public TaskbarLayout Clone() => JsonSerializer.Deserialize<TaskbarLayout>(JsonSerializer.Serialize(this))!;
+
+    /// <summary>
+    /// 整理（读取设置后、编辑完成后调用）：去掉空列、重复的行和不认识的数据项，
+    /// 一列超过两行的挪到后面新的一列，漏掉的行放进 Hidden。
+    /// </summary>
+    public TaskbarLayout Normalize()
+    {
+        var seen = new HashSet<TaskbarRowKind>();
+        bool Keep(TaskbarRow? r)
+        {
+            if (r == null || !Enum.IsDefined(r.Kind) || !seen.Add(r.Kind))
+                return false;
+            var allowed = TaskbarCatalog.Row(r.Kind).Metrics.Select(m => m.Metric).ToHashSet();
+            r.Metrics = [.. (r.Metrics ?? []).Where(allowed.Contains).Distinct()];
+            r.Fans = [.. (r.Fans ?? []).Where(id => !string.IsNullOrEmpty(id)).Distinct()];
+            return true;
+        }
+
+        var columns = new List<List<TaskbarRow>>();
+        foreach (var col in Columns ?? [])
+        {
+            var rows = (col ?? []).Where(Keep).ToList();
+            for (int i = 0; i < rows.Count; i += MaxRows)
+                columns.Add(rows.GetRange(i, Math.Min(MaxRows, rows.Count - i)));
+        }
+        Columns = columns;
+        Hidden = [.. (Hidden ?? []).Where(Keep)];
+        foreach (var kind in Enum.GetValues<TaskbarRowKind>())
+            if (seen.Add(kind))
+                Hidden.Add(TaskbarCatalog.NewRow(kind));
+        return this;
+    }
+}
 
 /// <summary>需要记住的设置，存在 %AppData%\SysMonitor\settings.json。</summary>
 public sealed class AppSettings
@@ -55,7 +101,7 @@ public sealed class AppSettings
     [JsonConverter(typeof(JsonStringEnumConverter<TaskbarSide>))]
     public TaskbarSide TaskbarSide { get; set; } = TaskbarSide.Right;
 
-    public TaskbarItems TaskbarItems { get; set; } = new();
+    public TaskbarLayout TaskbarLayout { get; set; } = TaskbarCatalog.DefaultLayout();
 
     /// <summary>传感器分组的展开状态（键为硬件 Id）。没记录过的分组默认折叠。</summary>
     public Dictionary<string, bool> SensorGroups { get; set; } = [];
@@ -66,8 +112,11 @@ public sealed class AppSettings
     {
         try
         {
-            if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new();
+            if (File.Exists(FilePath) && JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) is { } s)
+            {
+                s.TaskbarLayout = s.TaskbarLayout?.Normalize() ?? TaskbarCatalog.DefaultLayout();
+                return s;
+            }
         }
         catch
         {

@@ -4,91 +4,66 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="自定义任务栏数据"
         Icon="Assets/app.ico"
-        SizeToContent="WidthAndHeight" ResizeMode="NoResize" ShowInTaskbar="True"
+        Width="760" SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="True"
         FontFamily="Microsoft YaHei UI" FontSize="13"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
-    <StackPanel Margin="20,16,20,16" MinWidth="520">
+    <StackPanel Margin="20,16,20,16">
         <TextBlock Text="预览" FontWeight="SemiBold" Margin="0,0,0,8" />
 
-        <!-- 模拟任务栏底色，深浅跟随“Windows 模式”（与任务栏一致）；内容由任务栏同一套绘制代码画出 -->
+        <!-- 模拟任务栏底色，深浅跟随“Windows 模式”（与任务栏一致）；内容由任务栏同一套绘制代码画出，太宽时缩小显示 -->
         <Border x:Name="PreviewHost" CornerRadius="6" Height="56" Padding="12,0" BorderThickness="1" BorderBrush="#30808080">
             <Grid>
-                <Image x:Name="PreviewImage" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
-                <TextBlock x:Name="PreviewEmpty" Text="没有选择任何项目，任务栏上将不显示数据" Opacity="0.6"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed" />
+                <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+                    <Image x:Name="PreviewImage" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality" />
+                </Viewbox>
+                <TextBlock x:Name="PreviewEmpty" Opacity="0.6" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="Collapsed" />
             </Grid>
         </Border>
-        <TextBlock x:Name="HintText" Opacity="0.6" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" />
+        <TextBlock x:Name="HintText" Opacity="0.6" Margin="0,6,0,0" TextWrapping="Wrap" />
 
-        <DockPanel Margin="0,18,0,6">
-            <TextBlock Text="显示项目" FontWeight="SemiBold" />
-            <TextBlock Text="按住卡片空白处左右拖动可调整顺序" Opacity="0.6" Margin="12,0,0,0" VerticalAlignment="Bottom" />
+        <DockPanel Margin="0,18,0,8">
+            <TextBlock Text="布局" FontWeight="SemiBold" />
+            <TextBlock Opacity="0.6" Margin="12,0,0,0" VerticalAlignment="Bottom" TextWrapping="Wrap"
+                       Text="拖动项目可左右、上下调整位置（每列最多两行）；拖到“未显示”即隐藏。点击项目可设置显示内容。" />
         </DockPanel>
-        <!-- 三张卡片的顺序 = 任务栏上从左到右的顺序；拖动时只改 Grid.Column，卡片不离开界面树，鼠标捕获不会丢 -->
-        <Grid x:Name="CardGrid" Margin="-4,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.Resources>
-                <Style TargetType="Border" x:Key="CardStyle">
-                    <Setter Property="Margin" Value="4,0" />
-                    <Setter Property="Padding" Value="10,8,10,6" />
-                    <Setter Property="CornerRadius" Value="6" />
-                    <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="BorderBrush" Value="#30808080" />
-                    <Setter Property="Background" Value="#0C808080" />
-                    <Setter Property="Cursor" Value="SizeAll" />
-                    <EventSetter Event="MouseLeftButtonDown" Handler="Card_MouseLeftButtonDown" />
-                    <EventSetter Event="MouseMove" Handler="Card_MouseMove" />
-                    <EventSetter Event="MouseLeftButtonUp" Handler="Card_MouseLeftButtonUp" />
-                    <EventSetter Event="LostMouseCapture" Handler="Card_LostMouseCapture" />
-                </Style>
-                <!-- 卡片显示拖动光标，勾选框上恢复普通光标 -->
-                <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
-                    <Setter Property="Cursor" Value="Arrow" />
-                </Style>
-                <!-- 卡片标题：拖动手柄 + 名称 -->
-                <DataTemplate x:Key="CardHeader">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" Opacity="0.75">
-                        <TextBlock Text="&#xE76F;" FontFamily="{DynamicResource SymbolThemeFontFamily}" FontSize="12"
-                                   VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock Text="{Binding}" />
-                    </StackPanel>
-                </DataTemplate>
-            </Grid.Resources>
-            <Border x:Name="CpuCard" Style="{StaticResource CardStyle}">
-                <StackPanel>
-                    <ContentPresenter Content="CPU / 内存" ContentTemplate="{StaticResource CardHeader}" />
-                    <CheckBox x:Name="CpuLoadBox" Tag="CPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                    <CheckBox x:Name="CpuTempBox" Tag="CPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                    <CheckBox x:Name="MemLoadBox" Tag="内存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                </StackPanel>
-            </Border>
-            <Border x:Name="GpuCard" Style="{StaticResource CardStyle}">
-                <StackPanel>
-                    <ContentPresenter Content="GPU / 显存" ContentTemplate="{StaticResource CardHeader}" />
-                    <CheckBox x:Name="GpuLoadBox" Tag="GPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                    <CheckBox x:Name="GpuTempBox" Tag="GPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                    <CheckBox x:Name="GpuMemLoadBox" Tag="显存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                </StackPanel>
-            </Border>
-            <Border x:Name="NetCard" Style="{StaticResource CardStyle}">
-                <StackPanel>
-                    <ContentPresenter Content="网络" ContentTemplate="{StaticResource CardHeader}" />
-                    <CheckBox x:Name="NetUpBox" Tag="上传速度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                    <CheckBox x:Name="NetDownBox" Tag="下载速度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                </StackPanel>
-            </Border>
+
+        <!-- 拖动时鼠标捕获在 LayoutArea 上：项目卡片会随布局变化重建，捕获在它们身上会丢 -->
+        <Grid x:Name="LayoutArea" Background="Transparent"
+              MouseMove="LayoutArea_MouseMove" MouseLeftButtonUp="LayoutArea_MouseLeftButtonUp"
+              LostMouseCapture="LayoutArea_LostMouseCapture">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ScrollViewer x:Name="ColumnsScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <StackPanel x:Name="ColumnsPanel" Orientation="Horizontal" Margin="0,0,0,4" />
+            </ScrollViewer>
+            <DockPanel Grid.Row="1" Margin="0,6,0,0">
+                <TextBlock Text="未显示" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <Border x:Name="PoolArea" CornerRadius="6" BorderThickness="1" BorderBrush="#30808080"
+                        Background="#08808080" Padding="6,6,0,0" MinHeight="48">
+                    <WrapPanel x:Name="PoolPanel" />
+                </Border>
+            </DockPanel>
+            <!-- 拖动中跟着鼠标走的卡片影子 -->
+            <Canvas x:Name="DragLayer" Grid.RowSpan="2" IsHitTestVisible="False" />
         </Grid>
 
-        <TextBlock Text="样式" FontWeight="SemiBold" Margin="0,14,0,6" />
-        <CheckBox x:Name="MetersBox" Content="占用率前显示小条" Checked="Item_Changed" Unchecked="Item_Changed" />
+        <Border Margin="0,14,0,0" Padding="14,10" CornerRadius="6" BorderThickness="1" BorderBrush="#30808080">
+            <StackPanel>
+                <TextBlock x:Name="DetailTitle" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <WrapPanel x:Name="DetailPanel" />
+                <TextBlock x:Name="DetailNote" Opacity="0.6" Margin="0,4,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
 
-        <DockPanel Margin="0,20,0,0" LastChildFill="False">
+        <CheckBox x:Name="MetersBox" Content="占用率前显示小条" Margin="0,12,0,0"
+                  Checked="Meters_Changed" Unchecked="Meters_Changed" />
+
+        <DockPanel Margin="0,18,0,0" LastChildFill="False">
             <Button DockPanel.Dock="Left" Content="恢复默认" MinWidth="88" Click="Reset_Click" />
             <Button DockPanel.Dock="Right" Content="取消" MinWidth="88" Margin="8,0,0,0" IsCancel="True" />
             <Button DockPanel.Dock="Right" Content="确定" MinWidth="88" IsDefault="True" Click="Ok_Click"

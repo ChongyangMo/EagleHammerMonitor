@@ -141,6 +141,75 @@ static class SensorPicks
     public static SensorReading? GpuTemp(SensorSnapshot s) =>
         Gpus.Select(h => Find(s, h, SensorType.Temperature, "GPU Core", "GPU Hot Spot")).FirstOrDefault(r => r != null);
 
+    /// <summary>CPU 全部核心的平均频率（MHz）。</summary>
+    public static SensorReading? CpuClock(SensorSnapshot s) => Find(s, HardwareType.Cpu, SensorType.Clock, "Cores (Average)", "Core #1");
+
+    public static SensorReading? CpuPower(SensorSnapshot s) => Find(s, HardwareType.Cpu, SensorType.Power, "Package", "CPU Package", "Cores");
+
+    /// <summary>物理内存已用（GB）。</summary>
+    public static SensorReading? MemUsed(SensorSnapshot s) =>
+        s.Readings.FirstOrDefault(r => r.HardwareType == HardwareType.Memory && r.Type == SensorType.Data
+            && r.Name == "Memory Used" && !r.HardwareName.Contains("Virtual", StringComparison.OrdinalIgnoreCase));
+
+    public static SensorReading? GpuClock(SensorSnapshot s) => OnGpu(s, SensorType.Clock, "GPU Core");
+
+    public static SensorReading? GpuPower(SensorSnapshot s) => OnGpu(s, SensorType.Power, "GPU Package", "GPU Power", "GPU Core");
+
+    /// <summary>显卡风扇转速（RPM），有多个风扇时取第一个。</summary>
+    public static SensorReading? GpuFan(SensorSnapshot s) => OnGpu(s, SensorType.Fan, "GPU Fan", "GPU Fan 1");
+
+    /// <summary>已用显存（MB）。</summary>
+    public static SensorReading? GpuMemUsed(SensorSnapshot s) => OnGpu(s, SensorType.SmallData, "GPU Memory Used");
+
+    /// <summary>与 <see cref="GpuLoad"/> 同一块显卡上的传感器，按名字优先级挑，都没有时取同类型第一个。</summary>
+    static SensorReading? OnGpu(SensorSnapshot s, SensorType type, params string[] preferred)
+    {
+        if (GpuLoad(s) is not { } gpu)
+            return null;
+        var all = s.Readings.Where(r => r.HardwareId == gpu.HardwareId && r.Type == type).ToList();
+        return preferred.Select(n => all.FirstOrDefault(r => r.Name.Equals(n, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(r => r != null)
+            ?? all.FirstOrDefault();
+    }
+
+    /// <summary>各硬盘“总活动”里最高的那个（%）。</summary>
+    public static float? DiskActivity(SensorSnapshot s) =>
+        MaxOf(s.Readings.Where(r => r.HardwareType == HardwareType.Storage && r.Type == SensorType.Load && r.Name == "Total Activity"));
+
+    /// <summary>各硬盘温度里最高的那个；不算“警告/临界温度阈值”这类固定值。</summary>
+    public static float? DiskTemp(SensorSnapshot s) =>
+        MaxOf(s.Readings.Where(r => r.HardwareType == HardwareType.Storage && r.Type == SensorType.Temperature
+            && r.Name is "Composite Temperature" or "Temperature"));
+
+    /// <summary>所有硬盘读取、写入速率之和（字节/秒）；没有硬盘数据时为 null。</summary>
+    public static (float Read, float Write)? DiskRates(SensorSnapshot s)
+    {
+        float read = 0, write = 0;
+        bool any = false;
+        foreach (var r in s.Readings)
+        {
+            if (r.HardwareType != HardwareType.Storage || r.Type != SensorType.Throughput || r.Value is not float v)
+                continue;
+            if (r.Name == "Read Rate")
+                read += v;
+            else if (r.Name == "Write Rate")
+                write += v;
+            else
+                continue;
+            any = true;
+        }
+        return any ? (read, write) : null;
+    }
+
+    /// <summary>所有风扇转速传感器（主板、显卡等）。</summary>
+    public static IEnumerable<SensorReading> Fans(SensorSnapshot s) => s.Readings.Where(r => r.Type == SensorType.Fan);
+
+    /// <summary>没指定风扇时显示的那个：优先主板上正在转的，其次任何正在转的。</summary>
+    public static SensorReading? DefaultFan(SensorSnapshot s) =>
+        Fans(s).Where(r => r.Value > 0).OrderBy(r => r.HardwareType is HardwareType.SuperIO or HardwareType.Motherboard ? 0 : 1).FirstOrDefault();
+
+    static float? MaxOf(IEnumerable<SensorReading> readings) =>
+        readings.Select(r => r.Value).Where(v => v is float x && !float.IsNaN(x)).Max();
+
     static SensorReading? Find(SensorSnapshot s, HardwareType hw, SensorType type, params string[] preferred)
     {
         SensorReading? first = null, firstWithValue = null;
