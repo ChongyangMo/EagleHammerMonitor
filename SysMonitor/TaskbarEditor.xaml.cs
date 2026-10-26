@@ -374,9 +374,9 @@ sealed partial class TaskbarEditor : Window
             foreach (var fan in fans)
             {
                 string id = fan.Id;
-                AddBox($"{fan.HardwareDisplayName} · {fan.DisplayName}", row.Fans.Contains(id),
+                AddBox(FanName(fan), row.Fans.Contains(id),
                     s => s.ById.GetValueOrDefault(id) is { } r ? SensorFormat.Format(r.Type, r.Value) : null,
-                    on => { row.Fans.Remove(id); if (on) row.Fans.Add(id); });
+                    on => { row.Fans.Remove(id); if (on) row.Fans.Add(id); }, 300);
             }
             note = _snapshot == null ? "正在等待传感器数据…"
                 : fans.Count == 0 ? "没有检测到风扇转速传感器（主板风扇需要管理员权限和 PawnIO 驱动）。"
@@ -401,9 +401,24 @@ sealed partial class TaskbarEditor : Window
         UpdateDetailValues();
     }
 
-    void AddBox(string label, bool isChecked, Func<SensorSnapshot, string?> value, Action<bool> toggle)
+    /// <summary>
+    /// 风扇的简短名称：主板风扇的硬件名是“主板型号 › 监控芯片”，太长，统称“主板”；
+    /// 显卡风扇的传感器名本身就是“GPU 风扇 1”，不用再加显卡型号。
+    /// </summary>
+    static string FanName(SensorReading fan) => fan.HardwareType switch
+    {
+        LibreHardwareMonitor.Hardware.HardwareType.SuperIO or LibreHardwareMonitor.Hardware.HardwareType.Motherboard => $"主板 · {fan.DisplayName}",
+        LibreHardwareMonitor.Hardware.HardwareType.GpuNvidia or LibreHardwareMonitor.Hardware.HardwareType.GpuAmd
+            or LibreHardwareMonitor.Hardware.HardwareType.GpuIntel => fan.DisplayName,
+        _ => $"{fan.HardwareDisplayName} · {fan.DisplayName}",
+    };
+
+    /// <param name="width">固定宽度（风扇多时排成整齐的两列），为 0 时按内容</param>
+    void AddBox(string label, bool isChecked, Func<SensorSnapshot, string?> value, Action<bool> toggle, double width = 0)
     {
         var box = new CheckBox { IsChecked = isChecked, Margin = new Thickness(0, 0, 18, 0) };
+        if (width > 0)
+            box.Width = width;
         RoutedEventHandler changed = (_, _) =>
         {
             toggle(box.IsChecked == true);
