@@ -100,6 +100,8 @@
                     <MenuItem Header="不显示" Tag="Off" Click="Taskbar_Click" />
                     <MenuItem Header="显示在左侧" Tag="Left" Click="Taskbar_Click" />
                     <MenuItem Header="显示在右侧" Tag="Right" Click="Taskbar_Click" />
+                    <Separator />
+                    <MenuItem Header="自定义显示内容…" Click="TaskbarEdit_Click" />
                 </MenuItem>
                 <MenuItem x:Name="TopmostItem" Header="窗口置顶" IsCheckable="True" Click="Topmost_Click" />
             </MenuItem>

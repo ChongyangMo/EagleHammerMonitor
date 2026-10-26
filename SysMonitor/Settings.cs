@@ -9,6 +9,22 @@ public enum ThemeChoice { System, Light, Dark }
 /// <summary>任务栏数据放在居中图标组的哪一侧。</summary>
 public enum TaskbarSide { Left, Right }
 
+/// <summary>任务栏上显示哪些项目（默认全部显示）。</summary>
+public sealed record TaskbarItems
+{
+    public bool CpuLoad { get; init; } = true;
+    public bool CpuTemp { get; init; } = true;
+    public bool MemLoad { get; init; } = true;
+    public bool GpuLoad { get; init; } = true;
+    public bool GpuTemp { get; init; } = true;
+    public bool GpuMemLoad { get; init; } = true;
+    public bool NetUp { get; init; } = true;
+    public bool NetDown { get; init; } = true;
+
+    /// <summary>占用率数字前的小条。</summary>
+    public bool Meters { get; init; } = true;
+}
+
 /// <summary>需要记住的设置，存在 %AppData%\SysMonitor\settings.json。</summary>
 public sealed class AppSettings
 {
@@ -27,6 +43,8 @@ public sealed class AppSettings
 
     [JsonConverter(typeof(JsonStringEnumConverter<TaskbarSide>))]
     public TaskbarSide TaskbarSide { get; set; } = TaskbarSide.Right;
+
+    public TaskbarItems TaskbarItems { get; set; } = new();
 
     /// <summary>传感器分组的展开状态（键为硬件 Id）。没记录过的分组默认折叠。</summary>
     public Dictionary<string, bool> SensorGroups { get; set; } = [];

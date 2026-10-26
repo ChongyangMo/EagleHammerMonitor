@@ -31,6 +31,7 @@ public partial class MainWindow : Window
     readonly SensorService _sensors = new();
     readonly TrayIcon _tray;
     readonly TaskbarPanel _taskbar;
+    TaskbarEditor? _taskbarEditor;
     readonly Dictionary<string, SensorRow> _rowById = [];
     readonly HashSet<string> _everHadValue = [];
     readonly ObservableCollection<GraphModel> _graphs = [];
@@ -60,7 +61,9 @@ public partial class MainWindow : Window
         _taskbar = new TaskbarPanel(
             () => Dispatcher.BeginInvoke(RestoreFromTray),
             () => Dispatcher.BeginInvoke(ExitApp),
-            side => Dispatcher.BeginInvoke(() => SetTaskbar(side)));
+            side => Dispatcher.BeginInvoke(() => SetTaskbar(side)),
+            () => Dispatcher.BeginInvoke(EditTaskbar));
+        _taskbar.SetItems(_settings.TaskbarItems);
 
         _sensors.IntervalMs = _settings.IntervalMs;
         TrayItem.IsChecked = _settings.MinimizeToTray;
@@ -126,6 +129,7 @@ public partial class MainWindow : Window
     {
         base.OnClosed(e);
         _closed = true;
+        _taskbarEditor?.Close(); // 没有所有者时它不会跟着关，留着会让程序退不掉
         SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _sensors.Dispose();
         _tray.Dispose();
@@ -298,6 +302,7 @@ public partial class MainWindow : Window
         StatsText.Text = string.Join("      ", stats.Append($"传感器 {s.Readings.Count} 个").Append($"更新于 {s.Time:HH:mm:ss}"));
         _tray.Update(s, stats);
         _taskbar.Update(s);
+        _taskbarEditor?.UpdateValues(BarValues.From(s));
     }
 
     bool SensorVisible(SensorRow row)
@@ -534,9 +539,39 @@ public partial class MainWindow : Window
             _settings.TaskbarSide = s;
         _settings.TaskbarDisplay = on;
         _settings.Save();
-        foreach (MenuItem mi in TaskbarMenu.Items)
+        foreach (var mi in TaskbarMenu.Items.OfType<MenuItem>().Where(mi => mi.Tag is string))
             mi.IsChecked = (string)mi.Tag == (on ? _settings.TaskbarSide.ToString() : "Off");
         _taskbar.Configure(on, _settings.TaskbarSide);
+    }
+
+    void TaskbarEdit_Click(object sender, RoutedEventArgs e) => EditTaskbar();
+
+    /// <summary>打开（或激活已打开的）任务栏显示内容编辑窗口。</summary>
+    void EditTaskbar()
+    {
+        if (_taskbarEditor != null)
+        {
+            _taskbarEditor.Activate();
+            return;
+        }
+        _taskbarEditor = new TaskbarEditor(_settings.TaskbarItems, _last is { } s ? BarValues.From(s) : null, _settings.TaskbarDisplay,
+            items =>
+            {
+                _settings.TaskbarItems = items;
+                _taskbar.SetItems(items);
+            });
+        _taskbarEditor.Closed += (_, _) =>
+        {
+            _taskbarEditor = null;
+            _settings.Save();
+        };
+        // 主窗口藏在托盘里时（从任务栏右键菜单打开）不设所有者，单独居中显示
+        if (IsVisible)
+            _taskbarEditor.Owner = this;
+        else
+            _taskbarEditor.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        _taskbarEditor.Show();
+        _taskbarEditor.Activate();
     }
 
     void Topmost_Click(object sender, RoutedEventArgs e) => Topmost = TopmostItem.IsChecked;

@@ -21,8 +21,19 @@ sealed record BarRow(string Label, BarCell[] Cells, LabelTone Tone = LabelTone.N
 /// </summary>
 readonly record struct BarCell(string Value, string Unit, string Template, string UnitTemplate, int Level = 0, float? Fill = null);
 
+/// <summary>任务栏用到的几个读数，读不到的为 null。</summary>
+readonly record struct BarValues(float? CpuLoad, float? CpuTemp, float? MemLoad, float? GpuLoad, float? GpuTemp, float? GpuMemLoad, float? Up, float? Down)
+{
+    public static BarValues From(SensorSnapshot s)
+    {
+        var net = SensorPicks.NetRates(s);
+        return new(SensorPicks.CpuLoad(s)?.Value, SensorPicks.CpuTemp(s)?.Value, SensorPicks.MemLoad(s)?.Value,
+            SensorPicks.GpuLoad(s)?.Value, SensorPicks.GpuTemp(s)?.Value, SensorPicks.GpuMemLoad(s)?.Value, net?.Up, net?.Down);
+    }
+}
+
 /// <summary>
-/// 在 Win11 任务栏的空白处显示数据，三块（CPU+内存、GPU+显存、上传+下载）并排放在用户选的一侧：
+/// 在 Win11 任务栏的空白处显示数据，三块（CPU+内存、GPU+显存、上传+下载，每项可在设置里关掉）并排放在用户选的一侧：
 /// 左侧 = 居中图标组左边的空白（靠左），右侧 = 图标组和托盘之间的空白（贴着托盘）。
 /// 选了左侧但左边没空间（任务栏靠左对齐）时改放右侧；空间不够时从最后一块（网速）开始去掉。
 /// 做法：在任务栏窗口（Shell_TrayWnd）下建逐像素透明的子窗口，随任务栏移动、全屏时随任务栏一起隐藏。
@@ -43,6 +54,10 @@ sealed class TaskbarPanel : IDisposable
     Forms.ToolStripItem _moveItem = null!;
     volatile bool _disposed;
 
+    // 以下只在调用方（主界面）线程上访问
+    TaskbarItems _items = new();
+    BarValues? _values;
+
     // 以下只在窗口线程上访问
     Layout? _layout;
     List<BarRow>[] _rows = [];
@@ -58,7 +73,8 @@ sealed class TaskbarPanel : IDisposable
     /// <param name="show">点击时打开主窗口</param>
     /// <param name="exit">右键菜单“退出”</param>
     /// <param name="setSide">右键菜单“移到左侧/右侧”（传入新位置）、“隐藏任务栏数据”（传入 null）</param>
-    public TaskbarPanel(Action show, Action exit, Action<TaskbarSide?> setSide)
+    /// <param name="edit">右键菜单“自定义显示内容”</param>
+    public TaskbarPanel(Action show, Action exit, Action<TaskbarSide?> setSide, Action edit)
     {
         _show = show;
         _exit = exit;
@@ -74,6 +90,7 @@ sealed class TaskbarPanel : IDisposable
             _menu = new Forms.ContextMenuStrip();
             _menu.Items.Add("打开 SysMonitor", null, (_, _) => _show());
             _moveItem = _menu.Items.Add("", null, (_, _) => _setSide(_side == TaskbarSide.Left ? TaskbarSide.Right : TaskbarSide.Left));
+            _menu.Items.Add("自定义显示内容…", null, (_, _) => edit());
             _menu.Items.Add("隐藏任务栏数据", null, (_, _) => _setSide(null));
             _menu.Items.Add(new Forms.ToolStripSeparator());
             _menu.Items.Add("退出", null, (_, _) => _exit());
@@ -100,12 +117,41 @@ sealed class TaskbarPanel : IDisposable
 
     public void Update(SensorSnapshot s)
     {
-        var rows = BuildRows(s);
+        _values = BarValues.From(s);
+        Rebuild();
+    }
+
+    /// <summary>换显示项目，立即按上一次的读数重画（编辑时实时生效）。</summary>
+    public void SetItems(TaskbarItems items)
+    {
+        _items = items;
+        Rebuild();
+    }
+
+    void Rebuild()
+    {
+        if (_values is not BarValues v)
+            return;
+        var rows = BuildRows(v, _items);
         Post(() =>
         {
             _rows = rows;
             Refresh();
         });
+    }
+
+    /// <summary>用和任务栏上一样的字体、配色画出内容（编辑窗口的预览用）；一项都不显示时返回 null。</summary>
+    public static Bitmap? RenderPreview(BarValues v, TaskbarItems items, int dpi, bool light)
+    {
+        var blocks = BuildRows(v, items).Where(r => r.Count > 0).ToList();
+        if (blocks.Count == 0)
+            return null;
+        using var st = new BarStyle(dpi);
+        int width = st.Measure(blocks), height = st.Scale(48);
+        var bmp = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
+        using (var g = Graphics.FromImage(bmp))
+            st.Draw(g, blocks, width, height, light, false);
+        return bmp;
     }
 
     public void Dispose()
@@ -135,30 +181,30 @@ sealed class TaskbarPanel : IDisposable
     // ───────────────────────────── 数据 ─────────────────────────────
 
     /// <summary>三块的内容，每块最多两行；顺序即从左到右的摆放顺序。</summary>
-    static List<BarRow>[] BuildRows(SensorSnapshot s)
+    static List<BarRow>[] BuildRows(BarValues v, TaskbarItems it)
     {
         List<BarRow> cpu = [], gpu = [], net = [];
-        AddRow(cpu, "CPU", Percent(SensorPicks.CpuLoad(s)), Temp(SensorPicks.CpuTemp(s)));
-        AddRow(cpu, "内存", Percent(SensorPicks.MemLoad(s)));
-        AddRow(gpu, "GPU", Percent(SensorPicks.GpuLoad(s)), Temp(SensorPicks.GpuTemp(s)));
-        AddRow(gpu, "显存", Percent(SensorPicks.GpuMemLoad(s)));
-        if (SensorPicks.NetRates(s) is (float up, float down))
-        {
-            AddRow(net, "↑", LabelTone.Up, Rate(up));
-            AddRow(net, "↓", LabelTone.Down, Rate(down));
-        }
+        bool m = it.Meters;
+        AddRow(cpu, "CPU", Percent(it.CpuLoad, v.CpuLoad, m), Temp(it.CpuTemp, v.CpuTemp));
+        AddRow(cpu, "内存", Percent(it.MemLoad, v.MemLoad, m));
+        AddRow(gpu, "GPU", Percent(it.GpuLoad, v.GpuLoad, m), Temp(it.GpuTemp, v.GpuTemp));
+        AddRow(gpu, "显存", Percent(it.GpuMemLoad, v.GpuMemLoad, m));
+        AddRow(net, "↑", LabelTone.Up, Rate(it.NetUp, v.Up));
+        AddRow(net, "↓", LabelTone.Down, Rate(it.NetDown, v.Down));
         return [cpu, gpu, net];
     }
 
-    static BarCell? Percent(SensorReading? r) =>
-        r?.Value is float v ? new BarCell($"{v:0}", "%", "100", "%", v >= 90 ? 2 : v >= 75 ? 1 : 0, Math.Clamp(v / 100, 0, 1)) : null;
+    static BarCell? Percent(bool show, float? value, bool meter) =>
+        show && value is float v ? new BarCell($"{v:0}", "%", "100", "%", v >= 90 ? 2 : v >= 75 ? 1 : 0, meter ? Math.Clamp(v / 100, 0, 1) : null) : null;
 
-    static BarCell? Temp(SensorReading? r) =>
-        r?.Value is float v ? new BarCell($"{v:0}", "°C", "100", "°C", v >= 85 ? 2 : v >= 70 ? 1 : 0) : null;
+    static BarCell? Temp(bool show, float? value) =>
+        show && value is float v ? new BarCell($"{v:0}", "°C", "100", "°C", v >= 85 ? 2 : v >= 70 ? 1 : 0) : null;
 
     /// <summary>“3.1 KB/s” 拆成数字和单位两部分。</summary>
-    static BarCell Rate(float v)
+    static BarCell? Rate(bool show, float? value)
     {
+        if (!show || value is not float v)
+            return null;
         var s = SensorFormat.Rate(v);
         int i = s.LastIndexOf(' ');
         return new BarCell(s[..i], s[(i + 1)..], "999.9", "MB/s");
@@ -282,7 +328,7 @@ sealed class TaskbarPanel : IDisposable
     }
 
     /// <summary>任务栏跟随的是“Windows 模式”（不是应用模式）的深浅色。</summary>
-    static bool SystemUsesLightTheme()
+    public static bool SystemUsesLightTheme()
     {
         try
         {
