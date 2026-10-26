@@ -20,7 +20,7 @@ sealed class TrayIcon : IDisposable
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示主窗口", null, (_, _) => show());
         menu.Items.Add("退出", null, (_, _) => exit());
-        _icon = new Forms.NotifyIcon { Text = "SysMonitor", Icon = AppIcon(), ContextMenuStrip = menu, Visible = true };
+        _icon = new Forms.NotifyIcon { Text = AppInfo.Name, Icon = AppIcon(), ContextMenuStrip = menu, Visible = true };
         _icon.DoubleClick += (_, _) => show();
     }
 
@@ -49,7 +49,7 @@ sealed class TrayIcon : IDisposable
             SetIcon(text, color);
         }
 
-        var tip = stats.Count > 0 ? string.Join("\n", stats) : "SysMonitor";
+        var tip = stats.Count > 0 ? string.Join("\n", stats) : AppInfo.Name;
         _icon.Text = tip.Length > 127 ? tip[..127] : tip;
     }
 

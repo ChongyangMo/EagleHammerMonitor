@@ -73,6 +73,7 @@ public partial class MainWindow : Window
         TaskbarMenu.IsEnabled = TaskbarPanel.Supported;
         SetTaskbar(_settings.TaskbarDisplay ? _settings.TaskbarSide : null);
         SyncMenuChecks();
+        MigrateStartupTask();
         RefreshStartupMenu();
         InitDriverStatus();
         GraphCard.Dark = ThemeHelper.IsDark(_settings.Theme);
@@ -112,7 +113,7 @@ public partial class MainWindow : Window
             if (!_tipShown)
             {
                 _tipShown = true;
-                _tray.ShowTip("SysMonitor 仍在运行", "已退出到托盘。双击托盘图标重新打开，右键托盘图标 → 退出 可彻底关闭。");
+                _tray.ShowTip($"{AppInfo.Name}仍在运行", "已退出到托盘。双击托盘图标重新打开，右键托盘图标 → 退出 可彻底关闭。");
             }
             return;
         }
@@ -580,7 +581,7 @@ public partial class MainWindow : Window
     void Exit_Click(object sender, RoutedEventArgs e) => ExitApp();
 
     void About_Click(object sender, RoutedEventArgs e) => MessageBox.Show(this,
-        "SysMonitor 系统监控 2.0（WPF）\n\n" +
+        $"{AppInfo.Name}（{AppInfo.EnglishName}）2.0\n{AppInfo.Company}\n\n" +
         "传感器：LibreHardwareMonitorLib（MPL-2.0）\n" +
         "硬件访问驱动：PawnIO（GPL-2.0）\n" +
         "硬件信息：WMI / Windows API",
@@ -598,7 +599,7 @@ public partial class MainWindow : Window
         var dlg = new SaveFileDialog
         {
             Filter = "文本文件 (*.txt)|*.txt",
-            FileName = $"SysMonitor_{Environment.MachineName}_{DateTime.Now:yyyyMMdd_HHmmss}.txt",
+            FileName = $"EagleHammer_{Environment.MachineName}_{DateTime.Now:yyyyMMdd_HHmmss}.txt",
         };
         if (dlg.ShowDialog(this) != true)
             return;

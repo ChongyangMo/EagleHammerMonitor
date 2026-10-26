@@ -77,7 +77,7 @@ sealed class TaskbarPanel : IDisposable
             _invoker = new Forms.Control();
             _ = _invoker.Handle; // 先建好句柄，别的线程才能 BeginInvoke
             _menu = new Forms.ContextMenuStrip();
-            _menu.Items.Add("打开 SysMonitor", null, (_, _) => _show());
+            _menu.Items.Add($"打开{AppInfo.Name}", null, (_, _) => _show());
             _moveItem = _menu.Items.Add("", null, (_, _) => _setSide(_side == TaskbarSide.Left ? TaskbarSide.Right : TaskbarSide.Left));
             _menu.Items.Add("自定义显示内容…", null, (_, _) => edit());
             _menu.Items.Add("隐藏任务栏数据", null, (_, _) => _setSide(null));
@@ -550,7 +550,7 @@ sealed class TaskbarPanel : IDisposable
                 {
                     CreateHandle(new Forms.CreateParams
                     {
-                        Caption = "SysMonitor",
+                        Caption = AppInfo.EnglishName,
                         Parent = l.Taskbar,
                         Style = Native.WS_CHILD | Native.WS_CLIPSIBLINGS,
                         // NOPARENTNOTIFY：不然按下左键时任务栏收到通知会抢走鼠标，松开的消息到不了这里

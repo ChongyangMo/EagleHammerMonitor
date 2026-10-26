@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SysMonitor"
         x:Name="Root"
-        Title="SysMonitor 系统监控"
+        Title="{x:Static local:AppInfo.Name}"
         Icon="Assets/app.ico"
         Width="1240" Height="800" MinWidth="860" MinHeight="520"
         FontFamily="Microsoft YaHei UI" FontSize="13"

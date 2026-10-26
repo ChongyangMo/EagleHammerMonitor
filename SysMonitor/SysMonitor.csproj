@@ -8,15 +8,18 @@
     <UseWPF>true</UseWPF>
     <!-- 只为托盘图标（NotifyIcon）引用 WinForms -->
     <UseWindowsForms>true</UseWindowsForms>
-    <AssemblyName>SysMonitor</AssemblyName>
+    <AssemblyName>EagleHammerMonitor</AssemblyName>
     <RootNamespace>SysMonitor</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- 图标由 ../tools/make_icon.py 生成 -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <Version>2.0.0</Version>
-    <Product>SysMonitor</Product>
-    <AssemblyTitle>SysMonitor 系统监控</AssemblyTitle>
+    <!-- 产品名称（界面上的叫法见 ../Core/AppInfo.cs） -->
+    <Product>鹰锤系统监控 EagleHammer Monitor</Product>
+    <AssemblyTitle>鹰锤系统监控</AssemblyTitle>
+    <Company>鹰锤 EagleHammer</Company>
+    <Copyright>© 鹰锤 EagleHammer</Copyright>
     <!-- Application.ThemeMode（Fluent 主题）在 .NET 9/10 仍标记为实验性 API -->
     <!-- WFO0003：WinForms 分析器要求 DPI 设置不放在 manifest，但这是 WPF 程序，DPI 应在 manifest 声明 -->
     <NoWarn>$(NoWarn);WPF0001;WFO0003</NoWarn>

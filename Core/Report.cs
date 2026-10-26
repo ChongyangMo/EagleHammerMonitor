@@ -7,7 +7,7 @@ static class Report
     public static string Build(IReadOnlyList<InfoPage> pages, SensorSnapshot? sensors)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("SysMonitor 系统报告");
+        sb.AppendLine($"{AppInfo.Name} 系统报告");
         sb.AppendLine($"生成时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"计算机：{Environment.MachineName}");
 

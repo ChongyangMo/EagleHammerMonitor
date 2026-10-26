@@ -1,4 +1,4 @@
-"""生成 SysMonitor 图标：圆角方块 + 蓝青渐变 + 白色心电监测线。
+"""生成鹰锤系统监控（EagleHammer Monitor）图标：圆角方块 + 蓝青渐变 + 白色心电监测线。
 python tools/make_icon.py  →  SysMonitor/Assets/app.ico（16~256 多尺寸）和预览 PNG"""
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter

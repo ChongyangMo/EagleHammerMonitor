@@ -14,7 +14,13 @@ static class StartupService
 
     static string UserId => WindowsIdentity.GetCurrent().User?.Value
         ?? throw new InvalidOperationException("无法获取当前用户身份。");
-    static string TaskName => "SysMonitor-Startup-" + UserId;
+    static string TaskName => "EagleHammerMonitor-Startup-" + UserId;
+
+    /// <summary>改名前（SysMonitor）用的任务名，启动时迁移，见 <see cref="MigrateLegacyTask"/>。</summary>
+    static string LegacyTaskName => "SysMonitor-Startup-" + UserId;
+
+    /// <summary>程序文件名（随 csproj 的 AssemblyName）。</summary>
+    static string ExeName => typeof(StartupService).Assembly.GetName().Name + ".exe";
 
     public static bool IsEnabled() => WithFolder<bool>(folder =>
     {
@@ -49,7 +55,7 @@ static class StartupService
         XElement Element(string name, params object[] content) => new(TaskNamespace + name, content);
         var xml = new XDocument(
             new XElement(TaskNamespace + "Task", new XAttribute("version", "1.2"),
-                Element("RegistrationInfo", Element("Description", "SysMonitor 开机启动")),
+                Element("RegistrationInfo", Element("Description", AppInfo.Name + " 开机启动")),
                 Element("Triggers", Element("LogonTrigger", Element("Enabled", true), Element("UserId", user))),
                 Element("Principals", new XElement(TaskNamespace + "Principal", new XAttribute("id", "CurrentUser"),
                     Element("UserId", user), Element("LogonType", "InteractiveToken"), Element("RunLevel", "HighestAvailable"))),
@@ -68,11 +74,37 @@ static class StartupService
         return true;
     });
 
+    /// <summary>
+    /// 改名前注册的开机启动任务指向旧的 SysMonitor.exe：删掉它，原来开着的话改为启动现在这个程序。
+    /// 不处理的话旧任务会在登录时继续启动旧程序，菜单上的“开机启动”也显示为未勾选。
+    /// </summary>
+    public static void MigrateLegacyTask()
+    {
+        bool wasEnabled = WithFolder<bool>(folder =>
+        {
+            object? task = null;
+            try
+            {
+                task = folder.GetTask(LegacyTaskName);
+                bool enabled = ((dynamic)task).Enabled;
+                folder.DeleteTask(LegacyTaskName, 0);
+                return enabled;
+            }
+            catch (Exception ex) when (ex.HResult == FileNotFound)
+            {
+                return false;
+            }
+            finally { Release(task); }
+        });
+        if (wasEnabled)
+            SetEnabled(true);
+    }
+
     static string ExecutablePath()
     {
         string path = Environment.ProcessPath ?? throw new InvalidOperationException("无法获取程序路径。");
-        if (!Path.GetFileName(path).Equals("SysMonitor.exe", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("请通过 SysMonitor.exe 设置开机启动。");
+        if (!Path.GetFileName(path).Equals(ExeName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"请通过 {ExeName} 设置开机启动。");
         return path;
     }
 

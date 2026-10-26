@@ -11,6 +11,12 @@ public partial class MainWindow
             RefreshStartupMenu();
     }
 
+    void MigrateStartupTask()
+    {
+        try { StartupService.MigrateLegacyTask(); }
+        catch (Exception ex) { Trace.TraceError("迁移旧的开机启动任务失败：{0}", ex); }
+    }
+
     void RefreshStartupMenu()
     {
         try

@@ -10,7 +10,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // SysMonitor.exe --report <文件>：不打开界面，直接生成文本报告
+        // EagleHammerMonitor.exe --report <文件>：不打开界面，直接生成文本报告
         if (e.Args.Length >= 2 && e.Args[0].Equals("--report", StringComparison.OrdinalIgnoreCase))
         {
             Shutdown(Report.RunHeadless(e.Args[1]));
