@@ -569,7 +569,10 @@ sealed class TaskbarPanel : IDisposable
             _width = width;
             var p = new Native.POINT { X = screenX, Y = l.BarTop };
             Native.ScreenToClient(l.Taskbar, ref p);
-            Native.SetWindowPos(Handle, Native.HWND_TOP, p.X, p.Y, width, l.BarHeight, Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
+            // 这里只定位置；大小随新内容一起由 UpdateLayeredWindow 一次换上（见 Render）。
+            // 用 SetWindowPos 原地改大小时旧画面会残留在任务栏上，和新画面叠在一起（比如标签变宽后数字右移，新旧数字重叠）
+            Native.SetWindowPos(Handle, Native.HWND_TOP, p.X, p.Y, 0, 0,
+                Native.SWP_NOSIZE | Native.SWP_NOCOPYBITS | Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
             Render();
         }
 
@@ -656,7 +659,7 @@ sealed class TaskbarPanel : IDisposable
         public const int WS_EX_LAYERED = 0x80000, WS_EX_NOACTIVATE = 0x08000000, WS_EX_NOPARENTNOTIFY = 0x4;
         public const int WM_MOUSEACTIVATE = 0x21, WM_MOUSEMOVE = 0x200, WM_LBUTTONDOWN = 0x201, WM_LBUTTONUP = 0x202, WM_RBUTTONUP = 0x205, WM_MOUSELEAVE = 0x2A3;
         public const int MA_NOACTIVATE = 3;
-        public const uint SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40;
+        public const uint SWP_NOSIZE = 0x1, SWP_NOACTIVATE = 0x10, SWP_SHOWWINDOW = 0x40, SWP_NOCOPYBITS = 0x100;
         public static readonly IntPtr HWND_TOP = 0;
 
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
