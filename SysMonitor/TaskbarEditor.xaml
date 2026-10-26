@@ -63,6 +63,13 @@
         <CheckBox x:Name="MetersBox" Content="占用率前显示小条" Margin="0,12,0,0"
                   Checked="Meters_Changed" Unchecked="Meters_Changed" />
 
+        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+            <TextBlock Text="上传/下载标签" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <RadioButton x:Name="NetArrowRadio" GroupName="NetLabel" Margin="0,0,16,0" Content="箭头 ↑ ↓" Tag="Arrow" Checked="NetLabel_Checked" />
+            <RadioButton x:Name="NetTextRadio" GroupName="NetLabel" Margin="0,0,16,0" Content="文字 上传 下载" Tag="Text" Checked="NetLabel_Checked" />
+            <RadioButton x:Name="NetBothRadio" GroupName="NetLabel" Margin="0,0,16,0" Content="箭头 + 文字" Tag="Both" Checked="NetLabel_Checked" />
+        </StackPanel>
+
         <DockPanel Margin="0,18,0,0" LastChildFill="False">
             <Button DockPanel.Dock="Left" Content="恢复默认" MinWidth="88" Click="Reset_Click" />
             <Button DockPanel.Dock="Right" Content="取消" MinWidth="88" Margin="8,0,0,0" IsCancel="True" />

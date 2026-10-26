@@ -72,6 +72,7 @@ sealed partial class TaskbarEditor : Window
     {
         _syncing = true;
         MetersBox.IsChecked = _layout.Meters;
+        (_layout.NetLabel switch { NetLabelStyle.Text => NetTextRadio, NetLabelStyle.Both => NetBothRadio, _ => NetArrowRadio }).IsChecked = true;
         _syncing = false;
         BuildLayout();
         BuildDetail();
@@ -384,7 +385,8 @@ sealed partial class TaskbarEditor : Window
         }
         else if (spec.Metrics.Length == 1)
         {
-            note = $"这一行只有一项数据：{spec.Metrics[0].Name}。";
+            note = $"这一行只有一项数据：{spec.Metrics[0].Name}。"
+                + (row.Kind is TaskbarRowKind.Up or TaskbarRowKind.Down ? "标签显示箭头还是文字，在下方“上传/下载标签”里选择。" : "");
         }
         else
         {
@@ -439,6 +441,14 @@ sealed partial class TaskbarEditor : Window
     }
 
     // ───────────────────────────── 其他 ─────────────────────────────
+
+    void NetLabel_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_syncing)
+            return;
+        _layout.NetLabel = Enum.Parse<NetLabelStyle>((string)((FrameworkElement)sender).Tag);
+        Changed();
+    }
 
     void Meters_Changed(object sender, RoutedEventArgs e)
     {

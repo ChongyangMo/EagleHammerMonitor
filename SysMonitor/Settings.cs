@@ -25,6 +25,10 @@ public enum TaskbarMetric
     DiskActivity, DiskTemp, DiskRead, DiskWrite,
 }
 
+/// <summary>上传/下载行的标签：箭头“↑”、文字“上传”，或两者都有“↑ 上传”。</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<NetLabelStyle>))]
+public enum NetLabelStyle { Arrow, Text, Both }
+
 /// <summary>一行的设置：显示哪几项数据；风扇行另外记着显示哪几个风扇（传感器 Id）。</summary>
 public sealed class TaskbarRow
 {
@@ -46,6 +50,8 @@ public sealed class TaskbarLayout
 
     /// <summary>占用率数字前的小条。</summary>
     public bool Meters { get; set; } = true;
+
+    public NetLabelStyle NetLabel { get; set; } = NetLabelStyle.Arrow;
 
     public TaskbarLayout Clone() => JsonSerializer.Deserialize<TaskbarLayout>(JsonSerializer.Serialize(this))!;
 
@@ -78,6 +84,8 @@ public sealed class TaskbarLayout
         foreach (var kind in Enum.GetValues<TaskbarRowKind>())
             if (seen.Add(kind))
                 Hidden.Add(TaskbarCatalog.NewRow(kind));
+        if (!Enum.IsDefined(NetLabel))
+            NetLabel = NetLabelStyle.Arrow;
         return this;
     }
 }

@@ -81,15 +81,25 @@ static class TaskbarCatalog
     }
 
     /// <summary>一行在任务栏上的样子；一项数据都没有时返回 null（这一行不显示）。</summary>
-    public static BarRow? BuildRow(SensorSnapshot s, TaskbarRow row, bool meters)
+    public static BarRow? BuildRow(SensorSnapshot s, TaskbarRow row, TaskbarLayout layout)
     {
         var spec = Row(row.Kind);
         IEnumerable<BarCell?> cells = row.Kind == TaskbarRowKind.Fan
-            ? FanReadings(s, row).Select(r => Cell(MetricFormat.Rpm, r.Value, meters))
-            : Shown(row).Select(m => Cell(m.Format, m.Value(s), meters));
+            ? FanReadings(s, row).Select(r => Cell(MetricFormat.Rpm, r.Value, layout.Meters))
+            : Shown(row).Select(m => Cell(m.Format, m.Value(s), layout.Meters));
         var present = cells.OfType<BarCell>().ToArray();
-        return present.Length > 0 ? new BarRow(spec.Label, present, spec.Tone) : null;
+        return present.Length > 0 ? new BarRow(Label(spec, layout.NetLabel), present, spec.Tone) : null;
     }
+
+    /// <summary>行标签；上传/下载按设置显示箭头、文字或两者。</summary>
+    static string Label(RowSpec spec, NetLabelStyle net) =>
+        spec.Kind is not (TaskbarRowKind.Up or TaskbarRowKind.Down) ? spec.Label
+        : net switch
+        {
+            NetLabelStyle.Text => spec.Name,
+            NetLabelStyle.Both => $"{spec.Label} {spec.Name}",
+            _ => spec.Label,
+        };
 
     /// <summary>风扇行要显示的风扇：勾选的（按勾选顺序），没勾选时自动挑一个。</summary>
     public static IEnumerable<SensorReading> FanReadings(SensorSnapshot s, TaskbarRow row)

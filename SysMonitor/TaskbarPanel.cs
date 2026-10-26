@@ -171,7 +171,7 @@ sealed class TaskbarPanel : IDisposable
 
     /// <summary>按布局生成各列（块）的内容，每块最多两行，从左到右；读不到数据的行和空列留给 Refresh 跳过。</summary>
     static List<List<BarRow>> BuildRows(SensorSnapshot s, TaskbarLayout layout) =>
-        [.. layout.Columns.Select(col => col.Select(r => TaskbarCatalog.BuildRow(s, r, layout.Meters)).OfType<BarRow>().ToList())];
+        [.. layout.Columns.Select(col => col.Select(r => TaskbarCatalog.BuildRow(s, r, layout)).OfType<BarRow>().ToList())];
 
     // ───────────────────────────── 布局（计时器线程） ─────────────────────────────
 
