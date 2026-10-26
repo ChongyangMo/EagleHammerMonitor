@@ -35,7 +35,7 @@ readonly record struct BarValues(float? CpuLoad, float? CpuTemp, float? MemLoad,
 /// <summary>
 /// 在 Win11 任务栏的空白处显示数据，三块（CPU+内存、GPU+显存、上传+下载，每项可在设置里关掉）并排放在用户选的一侧：
 /// 左侧 = 居中图标组左边的空白（靠左），右侧 = 图标组和托盘之间的空白（贴着托盘）。
-/// 选了左侧但左边没空间（任务栏靠左对齐）时改放右侧；空间不够时从最后一块（网速）开始去掉。
+/// 选了左侧但左边没空间（任务栏靠左对齐）时改放右侧；空间不够时从排在最后的一块开始去掉。
 /// 做法：在任务栏窗口（Shell_TrayWnd）下建逐像素透明的子窗口，随任务栏移动、全屏时随任务栏一起隐藏。
 /// 居中图标组的范围用 UI 自动化读取（图标数量会变），每秒查一次。
 /// 子窗口跑在独立线程上：跨进程父子窗口会把双方的输入队列连在一起，主界面卡住时不能拖累任务栏。
@@ -180,7 +180,7 @@ sealed class TaskbarPanel : IDisposable
 
     // ───────────────────────────── 数据 ─────────────────────────────
 
-    /// <summary>三块的内容，每块最多两行；顺序即从左到右的摆放顺序。</summary>
+    /// <summary>三块的内容，每块最多两行；按用户设置的顺序排列，即从左到右的摆放顺序。</summary>
     static List<BarRow>[] BuildRows(BarValues v, TaskbarItems it)
     {
         List<BarRow> cpu = [], gpu = [], net = [];
@@ -191,7 +191,7 @@ sealed class TaskbarPanel : IDisposable
         AddRow(gpu, "显存", Percent(it.GpuMemLoad, v.GpuMemLoad, m));
         AddRow(net, "↑", LabelTone.Up, Rate(it.NetUp, v.Up));
         AddRow(net, "↓", LabelTone.Down, Rate(it.NetDown, v.Down));
-        return [cpu, gpu, net];
+        return [.. it.BlockOrder().Select(b => b switch { TaskbarBlock.Cpu => cpu, TaskbarBlock.Gpu => gpu, _ => net })];
     }
 
     static BarCell? Percent(bool show, float? value, bool meter) =>

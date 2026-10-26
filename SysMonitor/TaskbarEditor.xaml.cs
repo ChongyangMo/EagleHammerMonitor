@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Drawing = System.Drawing;
@@ -15,9 +16,15 @@ sealed partial class TaskbarEditor : Window
     readonly TaskbarItems _original;
     readonly Action<TaskbarItems> _apply;
     readonly Dictionary<CheckBox, Func<BarValues, float?>> _sources;
+    readonly Dictionary<TaskbarBlock, Border> _cards;
     TaskbarItems _items;
+    List<TaskbarBlock> _order;
     BarValues? _values;
     bool _syncing, _saved;
+
+    // 正在拖动的卡片，以及按下时鼠标在卡片里的横向位置
+    Border? _dragCard;
+    double _grabX;
 
     /// <param name="apply">勾选变化时调用（实时预览）；关闭时再调用一次，传入最终结果（确定）或原设置（取消）</param>
     /// <param name="displayed">任务栏数据当前是否开着，关着时提示一下预览只在这个窗口里</param>
@@ -38,6 +45,8 @@ sealed partial class TaskbarEditor : Window
             [NetUpBox] = v => v.Up,
             [NetDownBox] = v => v.Down,
         };
+        _cards = new() { [TaskbarBlock.Cpu] = CpuCard, [TaskbarBlock.Gpu] = GpuCard, [TaskbarBlock.Net] = NetCard };
+        _order = [.. items.BlockOrder()];
         HintText.Text = !TaskbarPanel.Supported ? "任务栏数据需要 Windows 11。"
             : displayed ? "修改会立即显示在任务栏上；任务栏空间不够时会从右边的块开始省略。"
             : "任务栏数据当前未开启，可在“查看 → 任务栏数据”里选择显示位置。";
@@ -67,7 +76,15 @@ sealed partial class TaskbarEditor : Window
         NetDownBox.IsChecked = _items.NetDown;
         MetersBox.IsChecked = _items.Meters;
         _syncing = false;
+        _order = [.. _items.BlockOrder()];
+        PlaceCards();
         UpdateLabels();
+    }
+
+    void PlaceCards()
+    {
+        for (int i = 0; i < _order.Count; i++)
+            Grid.SetColumn(_cards[_order[i]], i);
     }
 
     /// <summary>这台电脑读不到的项目在名字后注明，免得勾上了却奇怪为什么不显示。</summary>
@@ -82,8 +99,13 @@ sealed partial class TaskbarEditor : Window
 
     void Item_Changed(object sender, RoutedEventArgs e)
     {
-        if (_syncing)
-            return;
+        if (!_syncing)
+            ApplyChanges();
+    }
+
+    /// <summary>按当前勾选和卡片顺序生成设置，应用到任务栏并刷新预览。</summary>
+    void ApplyChanges()
+    {
         _items = new TaskbarItems
         {
             CpuLoad = CpuLoadBox.IsChecked == true,
@@ -95,9 +117,64 @@ sealed partial class TaskbarEditor : Window
             NetUp = NetUpBox.IsChecked == true,
             NetDown = NetDownBox.IsChecked == true,
             Meters = MetersBox.IsChecked == true,
+            Order = [.. _order],
         };
         _apply(_items);
         RenderPreview();
+    }
+
+    // ───────────────────────────── 拖动排序 ─────────────────────────────
+    // 卡片跟着鼠标走（平移变换），中心越过相邻一列时立即换位，任务栏和预览同步变化；松手后吸附到所在列。
+
+    void Card_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var card = (Border)sender;
+        if (!card.CaptureMouse())
+            return;
+        _dragCard = card;
+        _grabX = e.GetPosition(card).X;
+        card.RenderTransform = new TranslateTransform();
+        Panel.SetZIndex(card, 1);
+        card.SetResourceReference(Border.BorderBrushProperty, "AccentFillColorDefaultBrush");
+        e.Handled = true;
+    }
+
+    void Card_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragCard != sender || _dragCard.RenderTransform is not TranslateTransform move)
+            return;
+        double column = CardGrid.ActualWidth / _order.Count;
+        double margin = _dragCard.Margin.Left;
+        // 卡片左边缘想去的位置（不超出两端），按卡片中心落在哪一列决定顺序
+        double left = Math.Clamp(e.GetPosition(CardGrid).X - _grabX, margin, CardGrid.ActualWidth - column + margin);
+        int target = Math.Clamp((int)((left - margin + column / 2) / column), 0, _order.Count - 1);
+
+        var block = _cards.First(c => c.Value == _dragCard).Key;
+        if (_order.IndexOf(block) != target)
+        {
+            _order.Remove(block);
+            _order.Insert(target, block);
+            PlaceCards();
+            ApplyChanges();
+        }
+        move.X = left - (target * column + margin);
+    }
+
+    void Card_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_dragCard == sender)
+            _dragCard.ReleaseMouseCapture(); // 收尾在 LostMouseCapture 里
+    }
+
+    /// <summary>正常松手、切到别的窗口等情况都会丢失捕获，统一在这里收尾。</summary>
+    void Card_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_dragCard != sender)
+            return;
+        _dragCard.RenderTransform = Transform.Identity;
+        Panel.SetZIndex(_dragCard, 0);
+        _dragCard.ClearValue(Border.BorderBrushProperty);
+        _dragCard = null;
     }
 
     void Reset_Click(object sender, RoutedEventArgs e)

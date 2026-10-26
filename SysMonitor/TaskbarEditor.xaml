@@ -22,30 +22,67 @@
         </Border>
         <TextBlock x:Name="HintText" Opacity="0.6" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="560" HorizontalAlignment="Left" />
 
-        <TextBlock Text="显示项目" FontWeight="SemiBold" Margin="0,18,0,6" />
-        <Grid>
+        <DockPanel Margin="0,18,0,6">
+            <TextBlock Text="显示项目" FontWeight="SemiBold" />
+            <TextBlock Text="按住卡片空白处左右拖动可调整顺序" Opacity="0.6" Margin="12,0,0,0" VerticalAlignment="Bottom" />
+        </DockPanel>
+        <!-- 三张卡片的顺序 = 任务栏上从左到右的顺序；拖动时只改 Grid.Column，卡片不离开界面树，鼠标捕获不会丢 -->
+        <Grid x:Name="CardGrid" Margin="-4,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <StackPanel>
-                <TextBlock Text="CPU / 内存" Opacity="0.7" Margin="0,0,0,2" />
-                <CheckBox x:Name="CpuLoadBox" Tag="CPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                <CheckBox x:Name="CpuTempBox" Tag="CPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                <CheckBox x:Name="MemLoadBox" Tag="内存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-            </StackPanel>
-            <StackPanel Grid.Column="1">
-                <TextBlock Text="GPU / 显存" Opacity="0.7" Margin="0,0,0,2" />
-                <CheckBox x:Name="GpuLoadBox" Tag="GPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-                <CheckBox x:Name="GpuTempBox" Tag="GPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                <CheckBox x:Name="GpuMemLoadBox" Tag="显存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
-            </StackPanel>
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="网络" Opacity="0.7" Margin="0,0,0,2" />
-                <CheckBox x:Name="NetUpBox" Tag="上传速度" Checked="Item_Changed" Unchecked="Item_Changed" />
-                <CheckBox x:Name="NetDownBox" Tag="下载速度" Checked="Item_Changed" Unchecked="Item_Changed" />
-            </StackPanel>
+            <Grid.Resources>
+                <Style TargetType="Border" x:Key="CardStyle">
+                    <Setter Property="Margin" Value="4,0" />
+                    <Setter Property="Padding" Value="10,8,10,6" />
+                    <Setter Property="CornerRadius" Value="6" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="BorderBrush" Value="#30808080" />
+                    <Setter Property="Background" Value="#0C808080" />
+                    <Setter Property="Cursor" Value="SizeAll" />
+                    <EventSetter Event="MouseLeftButtonDown" Handler="Card_MouseLeftButtonDown" />
+                    <EventSetter Event="MouseMove" Handler="Card_MouseMove" />
+                    <EventSetter Event="MouseLeftButtonUp" Handler="Card_MouseLeftButtonUp" />
+                    <EventSetter Event="LostMouseCapture" Handler="Card_LostMouseCapture" />
+                </Style>
+                <!-- 卡片显示拖动光标，勾选框上恢复普通光标 -->
+                <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Style>
+                <!-- 卡片标题：拖动手柄 + 名称 -->
+                <DataTemplate x:Key="CardHeader">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4" Opacity="0.75">
+                        <TextBlock Text="&#xE76F;" FontFamily="{DynamicResource SymbolThemeFontFamily}" FontSize="12"
+                                   VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <TextBlock Text="{Binding}" />
+                    </StackPanel>
+                </DataTemplate>
+            </Grid.Resources>
+            <Border x:Name="CpuCard" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <ContentPresenter Content="CPU / 内存" ContentTemplate="{StaticResource CardHeader}" />
+                    <CheckBox x:Name="CpuLoadBox" Tag="CPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
+                    <CheckBox x:Name="CpuTempBox" Tag="CPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
+                    <CheckBox x:Name="MemLoadBox" Tag="内存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="GpuCard" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <ContentPresenter Content="GPU / 显存" ContentTemplate="{StaticResource CardHeader}" />
+                    <CheckBox x:Name="GpuLoadBox" Tag="GPU 占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
+                    <CheckBox x:Name="GpuTempBox" Tag="GPU 温度" Checked="Item_Changed" Unchecked="Item_Changed" />
+                    <CheckBox x:Name="GpuMemLoadBox" Tag="显存占用率" Checked="Item_Changed" Unchecked="Item_Changed" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="NetCard" Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <ContentPresenter Content="网络" ContentTemplate="{StaticResource CardHeader}" />
+                    <CheckBox x:Name="NetUpBox" Tag="上传速度" Checked="Item_Changed" Unchecked="Item_Changed" />
+                    <CheckBox x:Name="NetDownBox" Tag="下载速度" Checked="Item_Changed" Unchecked="Item_Changed" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <TextBlock Text="样式" FontWeight="SemiBold" Margin="0,14,0,6" />

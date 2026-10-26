@@ -23,7 +23,18 @@ public sealed record TaskbarItems
 
     /// <summary>占用率数字前的小条。</summary>
     public bool Meters { get; init; } = true;
+
+    /// <summary>三块从左到右的顺序（编辑窗口里拖动调整）。</summary>
+    public TaskbarBlock[]? Order { get; init; }
+
+    /// <summary>整理过的顺序：去掉重复和无效的，漏掉的块按默认顺序补在后面。</summary>
+    public TaskbarBlock[] BlockOrder() =>
+        [.. (Order ?? []).Where(b => Enum.IsDefined(b)).Concat(Enum.GetValues<TaskbarBlock>()).Distinct()];
 }
+
+/// <summary>任务栏上的三块。</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<TaskbarBlock>))]
+public enum TaskbarBlock { Cpu, Gpu, Net }
 
 /// <summary>需要记住的设置，存在 %AppData%\SysMonitor\settings.json。</summary>
 public sealed class AppSettings
