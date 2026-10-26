@@ -340,65 +340,90 @@ sealed class TaskbarPanel : IDisposable
     /// <summary>按 DPI 缓存的字体和尺寸，负责测量和绘制内容。</summary>
     sealed class BarStyle : IDisposable
     {
-        readonly Font _font;
+        // 标签用雅黑（中文）；数字用 Segoe UI Semibold（等宽数字，粗一点更醒目）；单位小一号、淡一些
+        readonly Font _label, _value, _unit;
         readonly StringFormat _format;
         readonly Graphics _measure;
         readonly Bitmap _measureBmp = new(1, 1);
-        readonly Dictionary<string, float> _widths = [];
+        readonly Dictionary<(Font, string), float> _widths = [];
+        readonly float _ascent, _rowHeight;
 
         public BarStyle(int dpi)
         {
             Dpi = dpi;
-            _font = new Font("Microsoft YaHei UI", 12f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
+            _label = new Font("Microsoft YaHei UI", 12f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
+            _value = new Font("Segoe UI Semibold", 13f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
+            _unit = new Font("Segoe UI", 10.5f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
             _format = (StringFormat)StringFormat.GenericTypographic.Clone();
             _format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces | StringFormatFlags.NoWrap;
             _measure = Graphics.FromImage(_measureBmp);
             _measure.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            // 不同字体按基线对齐：行高 = 最大上部 + 最大下部
+            Font[] fonts = [_label, _value, _unit];
+            _ascent = fonts.Max(Ascent);
+            _rowHeight = _ascent + fonts.Max(Descent);
         }
 
         public int Dpi { get; }
 
         public int Scale(double v) => (int)Math.Round(v * Dpi / 96);
 
-        /// <summary>块内左右留白；标签与数值、数值与数值之间的间距。</summary>
-        int Pad => Scale(6);
-        int ColumnGap => Scale(6);
+        static float Ascent(Font f) => f.Size * f.FontFamily.GetCellAscent(f.Style) / f.FontFamily.GetEmHeight(f.Style);
+        static float Descent(Font f) => f.Size * f.FontFamily.GetCellDescent(f.Style) / f.FontFamily.GetEmHeight(f.Style);
 
-        float Width(string s)
+        /// <summary>两端留白；标签到第一列、列与列之间的间距；块与块之间的距离（中间画分隔线）。</summary>
+        int Pad => Scale(6);
+        int LabelGap => Scale(8);
+        int ColumnGap => Scale(10);
+        int BlockGap => Scale(22);
+        /// <summary>占用率小条的尺寸和它到数字的距离；数字到单位的距离。</summary>
+        int MeterWidth => Scale(26);
+        int MeterHeight => Math.Max(3, Scale(4));
+        int MeterGap => Scale(6);
+        int UnitGap => Scale(1.5);
+
+        float Width(Font font, string s)
         {
             if (s.Length == 0)
                 return 0;
-            if (!_widths.TryGetValue(s, out var w))
-                _widths[s] = w = _measure.MeasureString(s, _font, int.MaxValue, _format).Width;
+            if (!_widths.TryGetValue((font, s), out var w))
+                _widths[(font, s)] = w = _measure.MeasureString(s, font, int.MaxValue, _format).Width;
             return w;
         }
 
-        float LabelWidth(List<BarRow> rows) => rows.Max(r => Width(r.Label));
+        float LabelWidth(List<BarRow> rows) => rows.Max(r => Width(_label, r.Label));
+
+        /// <summary>一列由三段组成：小条（这一列有的话）、右对齐的数字、单位。</summary>
+        readonly record struct Column(float Meter, float Number, float Unit)
+        {
+            public float Width => Meter + Number + Unit;
+        }
 
         /// <summary>各数值列的宽度：同一列取所有行里最宽的那格，上下两行对齐。</summary>
-        float[] ColumnWidths(List<BarRow> rows)
+        Column[] Columns(List<BarRow> rows)
         {
-            var cols = new float[rows.Max(r => r.Cells.Length)];
+            var cols = new Column[rows.Max(r => r.Cells.Length)];
             foreach (var row in rows)
                 for (int i = 0; i < row.Cells.Length; i++)
                 {
                     var c = row.Cells[i];
-                    cols[i] = Math.Max(cols[i], Math.Max(Width(c.Template), Width(c.Text)));
+                    cols[i] = new Column(
+                        Math.Max(cols[i].Meter, c.Fill.HasValue ? MeterWidth + MeterGap : 0),
+                        Math.Max(cols[i].Number, Math.Max(Width(_value, c.Template), Width(_value, c.Value))),
+                        Math.Max(cols[i].Unit, UnitGap + Math.Max(Width(_unit, c.UnitTemplate), Width(_unit, c.Unit))));
                 }
             return cols;
         }
 
-        int BlockGap => Scale(4);
-
         float BlockWidth(List<BarRow> rows)
         {
-            var cols = ColumnWidths(rows);
-            return LabelWidth(rows) + cols.Sum() + ColumnGap * cols.Length;
+            var cols = Columns(rows);
+            return LabelWidth(rows) + LabelGap + cols.Sum(c => c.Width) + ColumnGap * (cols.Length - 1);
         }
 
         /// <summary>几块并排的总宽度（含两端留白）。</summary>
         public int Measure(List<List<BarRow>> blocks) =>
-            (int)Math.Ceiling(Pad * 2 + blocks.Sum(BlockWidth) + (Pad * 2 + BlockGap) * (blocks.Count - 1));
+            (int)Math.Ceiling(Pad * 2 + blocks.Sum(BlockWidth) + BlockGap * (blocks.Count - 1));
 
         public void Draw(Graphics g, List<List<BarRow>> blocks, int width, int height, bool light, bool hover)
         {
@@ -415,45 +440,69 @@ sealed class TaskbarPanel : IDisposable
                 g.FillPath(hl, path);
             }
 
-            Color text = light ? Color.FromArgb(230, 0, 0, 0) : Color.FromArgb(240, 255, 255, 255);
-            Color dim = light ? Color.FromArgb(150, 0, 0, 0) : Color.FromArgb(165, 255, 255, 255);
-            Color warm = light ? Color.FromArgb(200, 110, 0) : Color.FromArgb(255, 185, 70);
-            Color hot = light ? Color.FromArgb(205, 30, 30) : Color.FromArgb(255, 100, 100);
-            using var textBrush = new SolidBrush(text);
-            using var dimBrush = new SolidBrush(dim);
-            using var warmBrush = new SolidBrush(warm);
-            using var hotBrush = new SolidBrush(hot);
+            Color Ink(int alpha) => light ? Color.FromArgb(alpha, 0, 0, 0) : Color.FromArgb(alpha, 255, 255, 255);
+            using var textBrush = new SolidBrush(Ink(light ? 235 : 245));
+            using var labelBrush = new SolidBrush(Ink(light ? 160 : 175));
+            using var unitBrush = new SolidBrush(Ink(light ? 135 : 150));
+            using var trackBrush = new SolidBrush(Ink(light ? 38 : 48));
+            using var lineBrush = new SolidBrush(Ink(light ? 45 : 55));
+            using var accentBrush = new SolidBrush(light ? Color.FromArgb(0, 95, 184) : Color.FromArgb(96, 205, 255));
+            using var upBrush = new SolidBrush(light ? Color.FromArgb(16, 124, 16) : Color.FromArgb(108, 214, 120));
+            using var warmBrush = new SolidBrush(light ? Color.FromArgb(200, 110, 0) : Color.FromArgb(255, 185, 70));
+            using var hotBrush = new SolidBrush(light ? Color.FromArgb(205, 30, 30) : Color.FromArgb(255, 100, 100));
 
-            float lineH = _font.GetHeight();
             float left = Pad;
-            foreach (var rows in blocks)
+            for (int b = 0; b < blocks.Count; b++)
             {
-                DrawBlock(rows, left);
-                left += BlockWidth(rows) + Pad * 2 + BlockGap;
+                if (b > 0)
+                {
+                    // 块与块之间一条细竖线
+                    float lineX = (float)Math.Round(left - BlockGap / 2f);
+                    g.FillRectangle(lineBrush, lineX, height * 0.28f, Math.Max(1, Scale(1)), height * 0.44f);
+                }
+                DrawBlock(blocks[b], left);
+                left += BlockWidth(blocks[b]) + BlockGap;
             }
 
             void DrawBlock(List<BarRow> rows, float x0)
             {
-                float top = (height - lineH * rows.Count) / 2;
+                float top = (height - _rowHeight * rows.Count) / 2;
                 float labelW = LabelWidth(rows);
-                var cols = ColumnWidths(rows);
+                var cols = Columns(rows);
                 foreach (var row in rows)
                 {
-                    float x = x0;
-                    g.DrawString(row.Label, _font, dimBrush, x, top, _format);
-                    x += labelW;
+                    float baseline = top + _ascent;
+                    var tone = row.Tone == LabelTone.Up ? upBrush : row.Tone == LabelTone.Down ? accentBrush : labelBrush;
+                    Text(row.Label, _label, tone, x0, baseline);
+                    float x = x0 + labelW + LabelGap;
                     for (int i = 0; i < row.Cells.Length; i++)
                     {
                         var c = row.Cells[i];
-                        x += ColumnGap;
-                        // 数字在列内右对齐
-                        var brush = c.Level == 2 ? hotBrush : c.Level == 1 ? warmBrush : textBrush;
-                        g.DrawString(c.Text, _font, brush, x + cols[i] - Width(c.Text), top, _format);
-                        x += cols[i];
+                        var level = c.Level == 2 ? hotBrush : c.Level == 1 ? warmBrush : null;
+                        if (c.Fill is float fill)
+                        {
+                            // 小条竖直方向对准数字的中部
+                            float h = MeterHeight, y = (float)Math.Round(baseline - _value.Size * 0.36f - h / 2);
+                            var track = new RectangleF(x, y, MeterWidth, h);
+                            using (var p = RoundedRect(track, h / 2))
+                                g.FillPath(trackBrush, p);
+                            if (fill > 0)
+                                using (var p = RoundedRect(track with { Width = Math.Max(h, MeterWidth * fill) }, h / 2))
+                                    g.FillPath(level ?? accentBrush, p);
+                        }
+                        x += cols[i].Meter;
+                        // 数字在列内右对齐，单位紧跟其后
+                        Text(c.Value, _value, level ?? textBrush, x + cols[i].Number - Width(_value, c.Value), baseline);
+                        x += cols[i].Number;
+                        Text(c.Unit, _unit, unitBrush, x + UnitGap, baseline);
+                        x += cols[i].Unit + ColumnGap;
                     }
-                    top += lineH;
+                    top += _rowHeight;
                 }
             }
+
+            void Text(string s, Font font, Brush brush, float x, float baseline) =>
+                g.DrawString(s, font, brush, x, baseline - Ascent(font), _format);
         }
 
         static GraphicsPath RoundedRect(RectangleF r, float radius)
@@ -470,7 +519,9 @@ sealed class TaskbarPanel : IDisposable
 
         public void Dispose()
         {
-            _font.Dispose();
+            _label.Dispose();
+            _value.Dispose();
+            _unit.Dispose();
             _format.Dispose();
             _measure.Dispose();
             _measureBmp.Dispose();
