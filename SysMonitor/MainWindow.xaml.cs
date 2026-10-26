@@ -70,6 +70,7 @@ public partial class MainWindow : Window
         TaskbarMenu.IsEnabled = TaskbarPanel.Supported;
         SetTaskbar(_settings.TaskbarDisplay ? _settings.TaskbarSide : null);
         SyncMenuChecks();
+        RefreshStartupMenu();
         InitDriverStatus();
         GraphCard.Dark = ThemeHelper.IsDark(_settings.Theme);
 

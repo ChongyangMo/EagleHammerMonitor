@@ -78,7 +78,7 @@
                 <Separator />
                 <MenuItem Header="退出(_X)" Click="Exit_Click" />
             </MenuItem>
-            <MenuItem Header="查看(_V)">
+            <MenuItem Header="查看(_V)" SubmenuOpened="ViewMenu_SubmenuOpened">
                 <MenuItem Header="刷新硬件信息(_R)" InputGestureText="F5" Click="RefreshInfo_Click" />
                 <MenuItem x:Name="IntervalMenu" Header="传感器刷新间隔">
                     <MenuItem Header="0.5 秒" Tag="500" Click="Interval_Click" />
@@ -93,6 +93,7 @@
                 </MenuItem>
                 <MenuItem Header="重置最小/最大值" Click="ResetMinMax_Click" />
                 <Separator />
+                <MenuItem x:Name="StartupItem" Header="开机启动" IsCheckable="True" Click="Startup_Click" />
                 <MenuItem x:Name="TrayItem" Header="最小化到托盘" IsCheckable="True" Click="Tray_Click" />
                 <MenuItem x:Name="CloseTrayItem" Header="关闭时退出到托盘" IsCheckable="True" Click="CloseTray_Click" />
                 <MenuItem x:Name="TaskbarMenu" Header="任务栏数据">
