@@ -353,7 +353,7 @@ sealed class TaskbarPanel : IDisposable
             Dpi = dpi;
             _label = new Font("Microsoft YaHei UI", 12f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
             _value = new Font("Segoe UI Semibold", 13f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
-            _unit = new Font("Segoe UI", 10.5f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
+            _unit = new Font("Segoe UI", 11f * dpi / 96, FontStyle.Regular, GraphicsUnit.Pixel);
             _format = (StringFormat)StringFormat.GenericTypographic.Clone();
             _format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces | StringFormatFlags.NoWrap;
             _measure = Graphics.FromImage(_measureBmp);
