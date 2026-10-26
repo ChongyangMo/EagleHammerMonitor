@@ -63,7 +63,7 @@ public partial class MainWindow : Window
             () => Dispatcher.BeginInvoke(ExitApp),
             side => Dispatcher.BeginInvoke(() => SetTaskbar(side)),
             () => Dispatcher.BeginInvoke(EditTaskbar));
-        _taskbar.SetItems(_settings.TaskbarItems);
+        _taskbar.SetLayout(_settings.TaskbarLayout);
 
         _sensors.IntervalMs = _settings.IntervalMs;
         TrayItem.IsChecked = _settings.MinimizeToTray;
@@ -301,7 +301,7 @@ public partial class MainWindow : Window
         StatsText.Text = string.Join("      ", stats.Append($"传感器 {s.Readings.Count} 个").Append($"更新于 {s.Time:HH:mm:ss}"));
         _tray.Update(s, stats);
         _taskbar.Update(s);
-        _taskbarEditor?.UpdateValues(BarValues.From(s));
+        _taskbarEditor?.UpdateSnapshot(s);
     }
 
     bool SensorVisible(SensorRow row)
@@ -553,11 +553,11 @@ public partial class MainWindow : Window
             _taskbarEditor.Activate();
             return;
         }
-        _taskbarEditor = new TaskbarEditor(_settings.TaskbarItems, _last is { } s ? BarValues.From(s) : null, _settings.TaskbarDisplay,
-            items =>
+        _taskbarEditor = new TaskbarEditor(_settings.TaskbarLayout, _last, _settings.TaskbarDisplay,
+            layout =>
             {
-                _settings.TaskbarItems = items;
-                _taskbar.SetItems(items);
+                _settings.TaskbarLayout = layout;
+                _taskbar.SetLayout(layout);
             });
         _taskbarEditor.Closed += (_, _) =>
         {
