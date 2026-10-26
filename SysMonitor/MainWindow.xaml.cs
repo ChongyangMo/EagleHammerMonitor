@@ -140,7 +140,6 @@ public partial class MainWindow : Window
     {
         bool admin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
         bool driver = PawnIoDriver.IsInstalled;
-        DriverText.Text = driver ? $"PawnIO 驱动 v{PawnIoDriver.Version}" : "PawnIO 驱动未安装";
 
         if (!admin)
         {

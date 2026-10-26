@@ -112,10 +112,7 @@
 
         <!-- 状态栏 -->
         <Border DockPanel.Dock="Bottom" Padding="14,6" BorderThickness="0,1,0,0" BorderBrush="#30808080">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock x:Name="DriverText" Opacity="0.7" Margin="0,0,24,0" />
-                <TextBlock x:Name="StatsText" />
-            </StackPanel>
+            <TextBlock x:Name="StatsText" />
         </Border>
 
         <Grid>
