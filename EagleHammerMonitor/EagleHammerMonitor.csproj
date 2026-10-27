@@ -9,7 +9,7 @@
     <!-- 只为托盘图标（NotifyIcon）引用 WinForms -->
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>EagleHammerMonitor</AssemblyName>
-    <RootNamespace>SysMonitor</RootNamespace>
+    <RootNamespace>EagleHammerMonitor</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- 图标由 ../tools/make_icon.py 生成 -->
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>

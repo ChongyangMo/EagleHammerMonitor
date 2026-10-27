@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using SensorType = LibreHardwareMonitor.Hardware.SensorType;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>
 /// 曲线卡片。直接在 OnRender 里画（一个元素一次绘制），

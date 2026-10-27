@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>
 /// 判断一个网络接口是不是“真正的网卡”。

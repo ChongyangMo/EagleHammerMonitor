@@ -6,7 +6,7 @@ using System.Windows.Media.Imaging;
 using Drawing = System.Drawing;
 using Shapes = System.Windows.Shapes;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>
 /// 编辑任务栏布局：拖动项目调整位置（左右换列、上下换行、拖到“未显示”隐藏），点击项目设置这一行显示哪些数据。

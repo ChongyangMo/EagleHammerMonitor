@@ -1,7 +1,7 @@
 using HardwareType = LibreHardwareMonitor.Hardware.HardwareType;
 using SensorType = LibreHardwareMonitor.Hardware.SensorType;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 static class SensorFormat
 {

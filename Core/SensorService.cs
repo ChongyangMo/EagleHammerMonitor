@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using LibreHardwareMonitor.Hardware;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public sealed record SensorReading(
     string Id,

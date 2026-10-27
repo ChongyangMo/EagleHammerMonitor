@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public partial class MainWindow
 {

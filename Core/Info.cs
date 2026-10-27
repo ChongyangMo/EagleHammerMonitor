@@ -1,4 +1,4 @@
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public sealed record InfoItem(string Name, string Value);
 

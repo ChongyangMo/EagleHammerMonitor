@@ -1,7 +1,7 @@
 using LibreHardwareMonitor.PawnIo;
 using X86 = System.Runtime.Intrinsics.X86;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>内存当前实际运行的时序（BIOS / XMP 设置后写进内存控制器的值，单位：时钟周期）。</summary>
 public sealed record MemoryTimingInfo(

@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using LibreHardwareMonitor.Hardware;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>硬件信息页的一行，按 Group 分组显示。</summary>
 public sealed record InfoRow(string Group, string Name, string Value);

@@ -1,9 +1,9 @@
 """生成鹰锤系统监控（EagleHammer Monitor）图标：圆角方块 + 蓝青渐变 + 白色心电监测线。
-python tools/make_icon.py  →  SysMonitor/Assets/app.ico（16~256 多尺寸）和预览 PNG"""
+python tools/make_icon.py  →  EagleHammerMonitor/Assets/app.ico（16~256 多尺寸）和预览 PNG"""
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
-OUT = Path(__file__).resolve().parent.parent / "SysMonitor" / "Assets"
+OUT = Path(__file__).resolve().parent.parent / "EagleHammerMonitor" / "Assets"
 S = 1024  # 先按 1024 画，再缩小，边缘更平滑
 
 PULSE = [(0.13, 0.57), (0.33, 0.57), (0.42, 0.29), (0.55, 0.79), (0.64, 0.45), (0.70, 0.57), (0.84, 0.57)]

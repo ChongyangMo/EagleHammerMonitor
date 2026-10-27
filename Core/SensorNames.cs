@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>
 /// 把 LibreHardwareMonitor 的英文传感器 / 硬件名翻译成中文，只用于显示。

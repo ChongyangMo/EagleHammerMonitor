@@ -10,7 +10,7 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using PawnIoDriver = LibreHardwareMonitor.PawnIo.PawnIo;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public partial class MainWindow : Window
 {

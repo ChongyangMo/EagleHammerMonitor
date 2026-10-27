@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Xml.Linq;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>按当前用户保存登录启动任务，以管理员权限运行硬件采集。</summary>
 static class StartupService

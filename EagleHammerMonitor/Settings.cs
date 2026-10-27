@@ -2,7 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Win32;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public enum ThemeChoice { System, Light, Dark }
 
@@ -90,7 +90,7 @@ public sealed class TaskbarLayout
     }
 }
 
-/// <summary>需要记住的设置，存在 %AppData%\SysMonitor\settings.json。</summary>
+/// <summary>需要记住的设置，存在 %AppData%\EagleHammerMonitor\settings.json。</summary>
 public sealed class AppSettings
 {
     [JsonConverter(typeof(JsonStringEnumConverter<ThemeChoice>))]
@@ -114,13 +114,20 @@ public sealed class AppSettings
     /// <summary>传感器分组的展开状态（键为硬件 Id）。没记录过的分组默认折叠。</summary>
     public Dictionary<string, bool> SensorGroups { get; set; } = [];
 
-    static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SysMonitor", "settings.json");
+    static string FilePath => PathIn("EagleHammerMonitor");
+
+    /// <summary>改名前的位置。新位置还没有设置文件时从这里读，下次保存就写到新位置。</summary>
+    static string LegacyFilePath => PathIn("SysMonitor");
+
+    static string PathIn(string folder) =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), folder, "settings.json");
 
     public static AppSettings Load()
     {
         try
         {
-            if (File.Exists(FilePath) && JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) is { } s)
+            string file = File.Exists(FilePath) ? FilePath : LegacyFilePath;
+            if (File.Exists(file) && JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(file)) is { } s)
             {
                 s.TaskbarLayout = s.TaskbarLayout?.Normalize() ?? TaskbarCatalog.DefaultLayout();
                 return s;

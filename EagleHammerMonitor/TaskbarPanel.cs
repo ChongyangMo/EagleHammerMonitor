@@ -7,7 +7,7 @@ using System.Windows.Automation;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>标签的颜色：普通标签用淡色，上传/下载箭头各用一种颜色，一眼分得出方向。</summary>
 enum LabelTone { Normal, Up, Down }

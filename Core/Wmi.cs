@@ -1,6 +1,6 @@
 using System.Management;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 static class Wmi
 {

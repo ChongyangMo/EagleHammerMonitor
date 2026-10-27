@@ -7,7 +7,7 @@ using Microsoft.Win32;
 using Arm = System.Runtime.Intrinsics.Arm;
 using X86 = System.Runtime.Intrinsics.X86;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>收集静态硬件/系统信息（WMI、注册表、.NET API），生成各分类页面。</summary>
 public sealed class SystemInfo

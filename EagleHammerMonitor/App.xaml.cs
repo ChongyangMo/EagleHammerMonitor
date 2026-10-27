@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 public partial class App : Application
 {

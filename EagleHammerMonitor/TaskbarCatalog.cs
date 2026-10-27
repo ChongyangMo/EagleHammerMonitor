@@ -1,4 +1,4 @@
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>数值的显示方式：决定数字格式、单位、固定列宽用的模板，以及是否有警示色和占用率小条。</summary>
 enum MetricFormat { Percent, Temp, GHz, MHz, Watt, GB, Rate, Rpm }

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 static class Report
 {

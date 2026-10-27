@@ -4,7 +4,7 @@ using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using Forms = System.Windows.Forms;
 
-namespace SysMonitor;
+namespace EagleHammerMonitor;
 
 /// <summary>托盘图标：图标上直接画 CPU 温度，按温度变色；提示文字显示 CPU/内存/GPU 摘要。</summary>
 sealed class TrayIcon : IDisposable
