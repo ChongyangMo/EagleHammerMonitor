@@ -120,7 +120,7 @@ public partial class MainWindow : Window
         base.OnClosing(e);
     }
 
-    void ExitApp()
+    internal void ExitApp()
     {
         _exiting = true;
         Close();
